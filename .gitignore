@@ -1,0 +1,12 @@
+node_modules
+package-lock.json
+
+database/cache
+database/sessions
+database/media/gifs/tmp
+src/addons/
+
+tmp/*
+!tmp/.gitkeep
+git.sh
+.env

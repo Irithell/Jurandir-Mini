@@ -1,0 +1,29 @@
+{
+  "name": "Jurandir Mini",
+  "prefix": "!",
+  "owner": {
+    "name": "Irithell",
+    "phones": [
+      "5515998361316@s.whatsapp.net",
+      "66989225681144@lid",
+      "5516989137935@s.whatsapp.net",
+      "8994315841645@lid"
+    ]
+  },
+  "consoleLogs": {
+    "enabled": true
+  },
+  "sessionId": "jurandir_main",
+  "timezone": "America/Sao_Paulo",
+  "assets": {
+    "primary": {
+      "headerImage": "https://pub-5cd6924d31ff4d3aae9f8df4b3ae81f4.r2.dev/7348f5658735edbe6c07bd923a740b60"
+    },
+    "profile": {
+      "fallback": "https://pub-5cd6924d31ff4d3aae9f8df4b3ae81f4.r2.dev/7348f5658735edbe6c07bd923a740b60"
+    }
+  },
+  "gemini": {
+    "apiKey": ""
+  }
+}

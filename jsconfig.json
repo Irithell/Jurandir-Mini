@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "checkJs": true,
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "@/types/*": ["./src/types/*"]
+    }
+  },
+  "exclude": ["node_modules", "database", "tmp"]
+}
