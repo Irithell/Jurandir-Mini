@@ -13,8 +13,11 @@ const SUBMENU_TEMPLATE = {
 ╰╔═════════════════════╗
 ╭┤         📦  {{CATEGORY_NAME}}
 ┃╚═════════════════════╝`,
-  commandLine: `┃ \n┃ {{EMOJI}} {{PREFIX}}{{CMD_NAME}}`,
-  footer: `\n╰╔═════════════════════╗\n╭┤           🐾  {{BOT_NAME}}  🐾\n╰╚═════════════════════╝`,
+  commandLine: `┃ 
+┃ {{EMOJI}} {{PREFIX}}{{CMD_NAME}}`,
+  footer: `\n╰╔═════════════════════╗
+╭┤           🐾  {{BOT_NAME}}  🐾
+╰╚═════════════════════╝`,
 };
 
 /**
@@ -27,9 +30,7 @@ export function generateMenuCommand(category) {
     from,
     info,
     prefix,
-    react,
-    sendTextWithMedia,
-    toUnicodeBoldUpper,
+    utils: { react, sendTextWithMedia, toUnicodeBoldUpper },
     botConfig,
   }) => {
     const startTime = Date.now();

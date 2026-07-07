@@ -1,13 +1,16 @@
-node_modules
+node_modules/
 package-lock.json
 
-database/cache
-database/sessions
-database/addons
-database/media/gifs/tmp
+database/cache/
+database/sessions/
+database/addons/
+database/media/gifs/tmp/
+
 src/addons/
+scripts/
 
 tmp/*
 !tmp/.gitkeep
+
 git.sh
 .env

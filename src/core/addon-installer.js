@@ -5,37 +5,29 @@ import { join, dirname, resolve } from 'node:path';
 import { addonDbRun, addonDbGet, addonDbAll } from '../configs/addons-db.js';
 import { ConsoleLogger } from '../utils/logger.js';
 
-/** @typedef {import('@/types/addons.d.ts').AddonRow} AddonRow */
+/**
+ * @typedef {import('@/types/addons.d.ts').AddonRow} AddonRow
+ * @typedef {(text: string) => void} ProgressFn
+ */
 
-const BASE_RAW = 'https://raw.githubusercontent.com/Irithell/Jurandir-Mini-Addons/main';
+export const ADDONS_RAW_BASE =
+  'https://raw.githubusercontent.com/Irithell/Jurandir-Mini-Addons/main';
 const TMP_DIR = join(process.cwd(), 'database/addons/.tmp');
 
-/** @type {boolean} */
 export let isInstalling = false;
 
-/**
- * @returns {string}
- */
 function detectPlatform() {
   if (process.env.PREFIX?.includes('/data/data/com.termux')) return 'termux';
   if (process.platform === 'win32') return 'win32';
   return 'default';
 }
 
-/**
- * @param {string} url
- * @returns {Promise<any>}
- */
 async function fetchJson(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
   return res.json();
 }
 
-/**
- * @param {string} url
- * @returns {Promise<any|null>}
- */
 async function fetchJsonOrNull(url) {
   const res = await fetch(url);
   if (res.status === 404) return null;
@@ -43,37 +35,20 @@ async function fetchJsonOrNull(url) {
   return res.json();
 }
 
-/**
- * @param {string} url
- * @returns {Promise<Buffer>}
- */
 async function fetchBuffer(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
   return Buffer.from(await res.arrayBuffer());
 }
 
-/**
- * @param {Buffer} buffer
- * @returns {string}
- */
 function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
 }
 
-/**
- * @param {Buffer} buffer
- * @param {string} expected
- * @returns {boolean}
- */
 function validateHash(buffer, expected) {
   return sha256(buffer) === expected.replace('sha256:', '');
 }
 
-/**
- * @param {string} dest
- * @returns {string}
- */
 function safeDest(dest) {
   const cwd = process.cwd();
   const abs = resolve(cwd, dest);
@@ -81,11 +56,6 @@ function safeDest(dest) {
   return abs;
 }
 
-/**
- * @param {string} name
- * @param {string} status
- * @param {string|null} [step=null]
- */
 function setStatus(name, status, step = null) {
   addonDbRun(`UPDATE addons SET status = ?, current_step = ? WHERE name = ?`, [
     status,
@@ -94,10 +64,6 @@ function setStatus(name, status, step = null) {
   ]);
 }
 
-/**
- * @param {string} name
- * @param {string} errorStack
- */
 function setFailed(name, errorStack) {
   addonDbRun(`UPDATE addons SET status = 'failed', error_log = ? WHERE name = ?`, [
     errorStack,
@@ -105,13 +71,9 @@ function setFailed(name, errorStack) {
   ]);
 }
 
-/**
- * @param {string} message
- * @param {'info'|'warn'|'error'|'tutor'|'success'} [level='info']
- */
 function log(message, level = 'info') {
   ConsoleLogger.dispatch({
-    level: level,
+    level: level ?? 'info',
     lines: [{ message, tags: [{ label: 'INSTALLER' }] }],
   });
 }
@@ -139,7 +101,7 @@ function installPackages(manifest) {
  * @param {Buffer} buffer
  * @param {any} fileEntry
  * @param {string} addonName
- * @param {{ force?: boolean }} [options={}]
+ * @param {{ force?: boolean }} [options]
  */
 async function writeAtomic(buffer, fileEntry, addonName, { force = false } = {}) {
   const { src, dest, hash } = fileEntry;
@@ -147,8 +109,8 @@ async function writeAtomic(buffer, fileEntry, addonName, { force = false } = {})
   if (!validateHash(buffer, hash)) throw new Error(`Hash inválido para: ${src}`);
 
   const absDest = safeDest(dest);
-
   const tmpPath = join(TMP_DIR, addonName, src.replaceAll('/', '_'));
+
   mkdirSync(dirname(tmpPath), { recursive: true });
   writeFileSync(tmpPath, buffer);
 
@@ -171,9 +133,6 @@ async function writeAtomic(buffer, fileEntry, addonName, { force = false } = {})
   }
 }
 
-/**
- * @param {any} manifest
- */
 function checkConflicts(manifest) {
   for (const conflict of manifest.conflicts ?? []) {
     const existing = addonDbGet(`SELECT name FROM addons WHERE name = ? AND status = 'done'`, [
@@ -186,8 +145,9 @@ function checkConflicts(manifest) {
 /**
  * @param {any} manifest
  * @param {Set<string>} installing
+ * @param {ProgressFn} [onProgress]
  */
-async function resolveDeps(manifest, installing) {
+async function resolveDeps(manifest, installing, onProgress) {
   for (const dep of manifest.requires ?? []) {
     if (installing.has(dep)) throw new Error(`Ciclo de dependência detectado: ${dep}`);
 
@@ -197,13 +157,11 @@ async function resolveDeps(manifest, installing) {
     if (existing) continue;
 
     installing.add(dep);
-    await installAddon(dep, { _installing: installing });
+    onProgress?.(`Instalando dependência: ${dep}`);
+    await installAddon(dep, { _installing: installing, onProgress });
   }
 }
 
-/**
- * @param {any} manifest
- */
 async function runMigrations(manifest) {
   for (const migration of manifest.migrations ?? []) {
     const abs = safeDest(migration.file);
@@ -213,10 +171,6 @@ async function runMigrations(manifest) {
   }
 }
 
-/**
- * @param {any} manifest
- * @param {string} addonPath
- */
 function registerInDB(manifest, addonPath) {
   addonDbRun(
     `UPDATE addons SET manifest = ?, version = ?, status = 'done', current_step = 'done', error_log = NULL WHERE name = ?`,
@@ -248,47 +202,60 @@ function registerInDB(manifest, addonPath) {
 /**
  * @param {string} addonPath
  * @param {any} manifest
- * @param {{ force?: boolean }} [options={}]
+ * @param {{ force?: boolean, onProgress?: ProgressFn }} [options]
  */
-async function runInstall(addonPath, manifest, { force = false } = {}) {
+async function runInstall(addonPath, manifest, { force = false, onProgress } = {}) {
   const name = manifest.name;
+  const files = manifest.files ?? [];
   const buffers = [];
 
   setStatus(name, 'packages');
+  onProgress?.('Instalando pacotes npm...');
   installPackages(manifest);
 
-  for (const file of manifest.files ?? []) {
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
     setStatus(name, 'downloading', file.src);
+    onProgress?.(`Baixando ${i + 1}/${files.length}: ${file.src}`);
     const url = `https://raw.githubusercontent.com/${manifest.repository}/main/${file.src}`;
     const buffer = await fetchBuffer(url);
 
     setStatus(name, 'validating', file.src);
+    onProgress?.(`Validando: ${file.src}`);
     if (!validateHash(buffer, file.hash)) throw new Error(`Hash inválido ao baixar: ${file.src}`);
 
     buffers.push({ file, buffer });
   }
 
   setStatus(name, 'writing');
+  onProgress?.('Escrevendo arquivos no sistema...');
   for (const { file, buffer } of buffers) {
     await writeAtomic(buffer, file, name, { force });
   }
 
   if (manifest.migrations?.length) {
     setStatus(name, 'migrating');
+    onProgress?.('Executando migrations...');
     await runMigrations(manifest);
   }
 
+  onProgress?.('Registrando no banco de dados...');
   registerInDB(manifest, addonPath);
 }
 
 /**
  * @param {string} addonPath
- * @param {{ force?: boolean, _installing?: Set<string> }} [options={}]
+ * @param {{ force?: boolean, _installing?: Set<string>, onProgress?: ProgressFn }} [options]
  */
-async function installAddon(addonPath, { force = false, _installing = new Set() } = {}) {
-  const manifest = await fetchJson(`${BASE_RAW}/${addonPath}/manifest.json`);
+async function installAddon(
+  addonPath,
+  { force = false, _installing = new Set(), onProgress } = {}
+) {
+  onProgress?.('Buscando manifest...');
+  const manifest = await fetchJson(`${ADDONS_RAW_BASE}/${addonPath}/manifest.json`);
   const name = manifest.name;
 
+  onProgress?.('Verificando conflitos...');
   checkConflicts(manifest);
 
   addonDbRun(
@@ -302,20 +269,21 @@ async function installAddon(addonPath, { force = false, _installing = new Set() 
   addonDbRun(`DELETE FROM addon_hooks WHERE addon_name = ?`, [name]);
   addonDbRun(`DELETE FROM addon_injects WHERE addon_name = ?`, [name]);
 
-  await resolveDeps(manifest, _installing);
+  onProgress?.('Resolvendo dependências...');
+  await resolveDeps(manifest, _installing, onProgress);
 
   try {
-    await runInstall(addonPath, manifest, { force });
+    await runInstall(addonPath, manifest, { force, onProgress });
     log(`${name} v${manifest.version} instalado com sucesso.`);
   } catch {
+    onProgress?.('Tentativa 1 falhou. Tentando novamente...');
     rmSync(join(TMP_DIR, name), { recursive: true, force: true });
 
     try {
-      await runInstall(addonPath, manifest, { force });
+      await runInstall(addonPath, manifest, { force, onProgress });
       log(`${name} v${manifest.version} instalado (segunda tentativa).`);
     } catch (err) {
-      const errorLog = err instanceof Error ? (err.stack ?? err.message) : String(err);
-      setFailed(name, errorLog);
+      setFailed(name, err instanceof Error ? err.stack : String(err));
       throw err;
     }
   }
@@ -323,22 +291,22 @@ async function installAddon(addonPath, { force = false, _installing = new Set() 
 
 /**
  * @param {string} addonPath
- * @param {{ force?: boolean }} [options={}]
+ * @param {{ force?: boolean, onProgress?: ProgressFn }} [options]
  */
-export async function install(addonPath, { force = false } = {}) {
+export async function install(addonPath, { force = false, onProgress } = {}) {
   isInstalling = true;
   process.send?.({ type: 'INSTALL_START' });
 
   try {
-    const bundle = await fetchJsonOrNull(`${BASE_RAW}/${addonPath}/bundle.json`);
+    const bundle = await fetchJsonOrNull(`${ADDONS_RAW_BASE}/${addonPath}/bundle.json`);
 
     if (bundle) {
       log(`Instalando bundle: ${bundle.displayName ?? addonPath}`);
       for (const component of bundle.components) {
-        await installAddon(`${addonPath}/${component}`, { force });
+        await installAddon(`${addonPath}/${component}`, { force, onProgress });
       }
     } else {
-      await installAddon(addonPath, { force });
+      await installAddon(addonPath, { force, onProgress });
     }
   } finally {
     isInstalling = false;
@@ -348,8 +316,9 @@ export async function install(addonPath, { force = false } = {}) {
 
 /**
  * @param {string} addonName
+ * @param {{ onProgress?: ProgressFn }} [options]
  */
-export async function update(addonName) {
+export async function update(addonName, { onProgress } = {}) {
   const row = addonDbGet(`SELECT manifest FROM addons WHERE name = ?`, [addonName]);
   if (!row) throw new Error(`Addon "${addonName}" não está instalado.`);
 
@@ -358,7 +327,7 @@ export async function update(addonName) {
   process.send?.({ type: 'INSTALL_START' });
 
   try {
-    await installAddon(_installedFrom ?? addonName, { force: true });
+    await installAddon(_installedFrom ?? addonName, { force: true, onProgress });
   } finally {
     isInstalling = false;
     process.send?.({ type: 'INSTALL_DONE' });

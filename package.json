@@ -1,7 +1,7 @@
 {
   "name": "Jurandir Mini",
   "version": "1.0.0",
-  "description": "Bot Jurandir Mini em JS ESM",
+  "description": "Bot Jurandir Mini",
   "type": "module",
   "main": "src/client/client.js",
   "scripts": {

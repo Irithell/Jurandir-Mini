@@ -123,6 +123,7 @@ export async function handleMessage(jurandir, data) {
 
     await runNativeFallback(ctx, getForwardedData(ctx) ?? extractedData);
   } catch (error) {
+    console.error('Erro ao processar mensagem:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     ConsoleLogger.dispatch({
       level: 'error',
