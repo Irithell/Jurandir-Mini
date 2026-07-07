@@ -168,7 +168,7 @@ export interface CommandUtils {
   sendSticker2: (jurandir: WASocket, jid: string, stickerPath: string) => Promise<any>;
   sendStickerFromUrl2: (jurandir: WASocket, jid: string, url: string) => Promise<any>;
 
-  // ========== INTERACTIVE MESSAGES ==========
+  // ========== INTERACTIVE MESSAGES (CAROUSEL) ==========
   sendTextWithMedia: (
     jurandir: WASocket,
     to: string,

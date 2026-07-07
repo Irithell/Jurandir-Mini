@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "build_time": 1783466704968,
+  "build_time": 1783466904533,
   "files": {
     ".editorconfig": "999c374e129517658aa4fd08a4879fefc20df9717d792153a460ae36afe4904f",
     ".prettierrc": "af43a3ad42a61ed745fc18d44faf9fceec0ee155a4e128487be4ac7569c986de",
@@ -34,7 +34,7 @@
     "src/types/addons.d.ts": "36eab2bc30616812e182d7f7ec9e563aeb41abd3960316be2ebc5f9a79b6d28c",
     "src/types/auth.d.ts": "56166e99f713d395b5897801554b90ca1dc7b43ca3b72bac88147993725abf29",
     "src/types/baileys.d.ts": "4c4a5be32e7e1b02a773d9544702138c6f726c7d1e59f0cdfeea15c1239d619a",
-    "src/types/commands.d.ts": "7bef7a8a9fc0b73b35f309e095403a396debe203bff8c12354f6fa1b79d00072",
+    "src/types/commands.d.ts": "fad0fa820218b127aca5102d4f2b4615aeea9e092bb05a3a8a3e69c019225387",
     "src/types/database.d.ts": "cae2abb8554757046c553659ae3495599d1378d6897cd9735a298f21fe7489b9",
     "src/types/logger.d.ts": "bf74feae6f89aa72a94275bbc4e57d5d38c5608c7887282d0fb4d106c357ed95",
     "src/types/messages.d.ts": "efa85ce16a3f6d9b71eb05570812c6b2360133efe8aad4aff310c9483ae051ef",
