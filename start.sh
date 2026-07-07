@@ -7,28 +7,92 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 YELLOW='\033[1;33m'
 WHITE='\033[1;37m'
+GRAY='\033[1;30m'
 
+REPO="Irithell/Jurandir-Mini"
+LATEST_URL="https://github.com/$REPO/releases/latest/download"
+API_URL="https://api.github.com/repos/$REPO/releases"
 DB_PATH="./database/sessions/jurandir.db"
-RAW_URL="https://raw.githubusercontent.com/Irithell/Jurandir-Mini/main"
 
 NPM_FLAG=""
-if [ -n "$PREFIX" ] && [ "$(echo $PREFIX | grep -o 'com.termux')" = "com.termux" ]; then
+if [ -n "$PREFIX" ] && [ "$(echo "$PREFIX" | grep -o 'com.termux')" = "com.termux" ]; then
   NPM_FLAG="--no-bin-links"
 fi
 
+show_banner() {
+  clear
+  printf "${CYAN}╭─────────────────────────────────────────────────────────────╮${NOCOLOR}\n"
+  printf "${CYAN}│${WHITE} 🤖 JURANDIR MINI — CENTRAL DE GERENCIAMENTO AVANÇADO      ${CYAN}│${NOCOLOR}\n"
+  printf "${CYAN}╰─────────────────────────────────────────────────────────────╯${NOCOLOR}\n"
+}
+
+log_info() { printf "${BLUE}[ ℹ ]${NOCOLOR} $1\n"; }
+log_step() { printf "${CYAN}[ ⚙ ]${NOCOLOR} $1\n"; }
+log_succ() { printf "${GREEN}[ ✓ ]${NOCOLOR} $1\n"; }
+log_warn() { printf "${YELLOW}[ ! ]${NOCOLOR} $1\n"; }
+log_err()  { printf "${RED}[ x ]${NOCOLOR} $1\n"; }
+
 detect_env() {
   if ! command -v node >/dev/null 2>&1; then
-    printf "${RED}[x] Node.js não encontrado! Instale para continuar.${NOCOLOR}\n"
+    log_err "Node.js não encontrado! O sistema requer o Node instalado."
     exit 1
   fi
+  if ! command -v curl >/dev/null 2>&1; then
+    log_err "curl não encontrado! Instale-o para prosseguir (apt install curl)."
+    exit 1
+  fi
+}
+
+clean_workspace() {
+  log_step "Iniciando protocolo de formatação limpa (Wipe)..."
+  mkdir -p .safe_zone
   
+  [ -d "database" ] && mv database .safe_zone/
+  [ -d "tmp" ] && mv tmp .safe_zone/
+  [ -f ".env" ] && mv .env .safe_zone/
+  [ -f "start.sh" ] && mv start.sh .safe_zone/
+
+  find . -mindepth 1 -maxdepth 1 ! -name '.safe_zone' -exec rm -rf {} +
+  
+  mv .safe_zone/* ./
+  rm -rf .safe_zone
+  log_succ "Área de trabalho limpa e pronta para a nova instalação."
+}
+
+bootstrap_updater() {
   if [ ! -f "scripts/updater.js" ]; then
-    printf "${YELLOW}[⚙] Baixando módulo de atualização...${NOCOLOR}\n"
+    log_step "Sincronizando mecanismo central de atualização..."
     mkdir -p scripts
-    curl -sL --connect-timeout 25 "$RAW_URL/scripts/updater.js" -o scripts/updater.js
     
-    if [ ! -s "scripts/updater.js" ]; then
-      printf "${RED}[x] Falha na rede ao obter o módulo de atualização.${NOCOLOR}\n"
+    log_info "1/3 Baixando manifest.json oficial..."
+    curl -sL -# "$LATEST_URL/manifest.json" -o .tmp_manifest.json
+    
+    if [ ! -s .tmp_manifest.json ]; then
+      log_err "Falha ao contactar o servidor do GitHub Releases."
+      exit 1
+    fi
+
+    log_info "2/3 Baixando script isolado (updater.js)..."
+    curl -sL -# "$LATEST_URL/updater.js" -o scripts/updater.js
+    
+    log_info "3/3 Validando integridade criptográfica (SHA-256)..."
+    NODE_VALIDATION=$(node -e "
+      const fs = require('fs');
+      const crypto = require('crypto');
+      try {
+        const manifest = JSON.parse(fs.readFileSync('.tmp_manifest.json'));
+        const expected = manifest.files['scripts/updater.js'];
+        const actual = crypto.createHash('sha256').update(fs.readFileSync('scripts/updater.js')).digest('hex');
+        console.log(expected === actual ? 'OK' : 'CORRUPTED');
+      } catch(e) { console.log('ERROR'); }
+    ")
+
+    if [ "$NODE_VALIDATION" = "OK" ]; then
+      mv .tmp_manifest.json manifest.json
+      log_succ "Mecanismo de atualização verificado e autêntico."
+    else
+      rm -f scripts/updater.js .tmp_manifest.json
+      log_err "Assinatura do updater.js não confere. Arquivo possivelmente corrompido. Abortando."
       exit 1
     fi
   fi
@@ -36,48 +100,128 @@ detect_env() {
 
 check_updates() {
   detect_env
-  printf "${YELLOW}[⚙] Verificando servidor de atualizações...${NOCOLOR}\n"
+  bootstrap_updater
   
-  node scripts/updater.js check
-  STATUS=$?
-
-  if [ $STATUS -eq 1 ]; then
-    printf "${GREEN}[+] Nova versão detectada! Iniciando sincronização...${NOCOLOR}\n"
-    node scripts/updater.js update
+  curl -sL "$LATEST_URL/manifest.json" -o .remote_manifest.json 2>/dev/null
+  if [ -s .remote_manifest.json ]; then
     
-    if [ $? -eq 0 ]; then
-      printf "\n${YELLOW}[+] Instalando módulos (npm)...${NOCOLOR}\n"
-      npm install $NPM_FLAG >/dev/null 2>&1
-      printf "${GREEN}[✓] Sistema atualizado com sucesso!${NOCOLOR}\n\n"
-    else
-      printf "${RED}[x] Falha ao aplicar a atualização.${NOCOLOR}\n\n"
+    REMOTE_VER=$(node -e "try { console.log(require('./.remote_manifest.json').version) } catch(e) { console.log('') }")
+    LOCAL_VER=$(node -e "try { console.log(require('./manifest.json').version) } catch(e) { console.log('0.0.0') }")
+    
+    rm -f .remote_manifest.json
+
+    if [ "$REMOTE_VER" != "$LOCAL_VER" ] && [ -n "$REMOTE_VER" ]; then
+      printf "\n${YELLOW}╭──────────────────────────────────────────────────╮${NOCOLOR}\n"
+      printf "${YELLOW}│ 🌟 ATUALIZAÇÃO DISPONÍVEL!                       │${NOCOLOR}\n"
+      printf "${YELLOW}├──────────────────────────────────────────────────┤${NOCOLOR}\n"
+      printf "${YELLOW}│ Sua versão atual: ${WHITE}v${LOCAL_VER}${NOCOLOR}\n"
+      printf "${YELLOW}│ Nova versão:      ${GREEN}v${REMOTE_VER}${NOCOLOR}\n"
+      printf "${YELLOW}╰──────────────────────────────────────────────────╯${NOCOLOR}\n"
+      
+      printf "\n${CYAN}Deseja instalar a atualização agora? [S/n]: ${NOCOLOR}"
+      read DO_UPDATE
+      if [[ -z "$DO_UPDATE" ]] || [[ "$DO_UPDATE" =~ ^[sS]$ ]]; then
+        printf "\n"
+        node scripts/updater.js update
+        if [ $? -eq 0 ]; then
+          log_step "Sincronizando dependências (npm)..."
+          npm install $NPM_FLAG >/dev/null 2>&1
+          log_succ "Sistema operando na versão v${REMOTE_VER}!"
+          sleep 2
+        else
+          log_err "Falha na aplicação do patch de atualização."
+          sleep 2
+        fi
+      else
+        log_info "Atualização adiada. Iniciando versão atual."
+      fi
     fi
-  elif [ $STATUS -eq 2 ]; then
-     printf "${RED}[!] Servidor indisponível ou erro de rede.${NOCOLOR}\n"
-     if [ ! -f "launcher.js" ]; then
-        printf "${RED}[x] Não é possível rodar o bot sem os arquivos básicos.${NOCOLOR}\n\n"
-     else
-        printf "${YELLOW}[i] Pulando atualização. Iniciando com os arquivos locais.${NOCOLOR}\n\n"
-     fi
   else
-    printf "${GREEN}[✓] O bot já está na versão mais recente.${NOCOLOR}\n\n"
+    log_warn "Sem conexão com o GitHub para verificar atualizações."
   fi
 }
 
-show_banner() {
-  clear
+explore_versions() {
+  show_banner
+  detect_env
+  log_step "Consultando banco de dados de releases oficiais..."
+  
+  node -e "
+    const https = require('https');
+    https.get('$API_URL', { headers: { 'User-Agent': 'Jurandir-Client' } }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const releases = JSON.parse(data);
+          if(!Array.isArray(releases) || releases.length === 0) throw new Error();
+          releases.forEach((r, i) => {
+            const date = new Date(r.published_at).toLocaleDateString('pt-BR');
+            console.log(\`\x1b[36m[\x1b[32m \${i} \x1b[36m]\x1b[0m \x1b[1;37m\${r.tag_name}\x1b[0m \x1b[90m— Lançado em \${date}\x1b[0m\`);
+          });
+          require('fs').writeFileSync('.releases_tmp.json', JSON.stringify(releases));
+        } catch(e) { console.log('ERRO'); }
+      });
+    }).on('error', () => console.log('ERRO'));
+  " > .menu_out
+  
+  if grep -q "ERRO" .menu_out; then
+    log_err "Falha ao processar as versões disponíveis. Verifique sua rede."
+    rm -f .menu_out .releases_tmp.json
+    printf "\nPressione ENTER para voltar."
+    read -r
+    return
+  fi
+
+  printf "\n${YELLOW}=== HISTÓRICO DE VERSÕES ===${NOCOLOR}\n"
+  cat .menu_out
+  rm -f .menu_out
+  
+  printf "\n${CYAN}Digite o NÚMERO da versão desejada (ou deixe vazio para cancelar): ${NOCOLOR}"
+  read V_INDEX
+
+  if [[ "$V_INDEX" =~ ^[0-9]+$ ]]; then
+    TARGET_TAG=$(node -e "try { console.log(require('./.releases_tmp.json')[$V_INDEX].tag_name) } catch(e) {}")
+    
+    if [ -n "$TARGET_TAG" ]; then
+      printf "\n${RED}ATENÇÃO: Isso formatará o diretório (preservando o database e .env).${NOCOLOR}\n"
+      printf "${YELLOW}Confirmar instalação limpa da versão ${TARGET_TAG}? [s/N]: ${NOCOLOR}"
+      read CONFIRM_DL
+      
+      if [[ "$CONFIRM_DL" =~ ^[sS]$ ]]; then
+        clean_workspace
+        log_step "Baixando pacote criptografado ($TARGET_TAG)..."
+        DL_URL="https://github.com/$REPO/releases/download/$TARGET_TAG/jurandir-mini.zip"
+        
+        curl -L -# "$DL_URL" -o pacote.zip
+        
+        log_step "Extraindo e posicionando arquivos..."
+        unzip -q -o pacote.zip
+        rm pacote.zip
+        
+        log_step "Instalando Módulos do Sistema..."
+        npm install $NPM_FLAG >/dev/null 2>&1
+        log_succ "Versão $TARGET_TAG instalada e pronta para uso!"
+      fi
+    else
+      log_err "Índice de versão inválido."
+    fi
+  fi
+  
+  rm -f .releases_tmp.json
+  printf "\nPressione ENTER para voltar ao menu."
+  read -r
 }
 
 start_bot() {
   clear
+  check_updates
   show_banner
   
-  check_updates
-  
   if [ ! -f "launcher.js" ]; then
-     printf "${RED}[x] O arquivo launcher.js não foi encontrado. A instalação falhou.${NOCOLOR}\n"
-     printf "Pressione ENTER para voltar ao menu."
-     read PAUSE
+     log_err "launcher.js ausente. Use a opção de instalação/restauração no menu."
+     printf "\nPressione ENTER para voltar."
+     read -r
      return
   fi
     
@@ -89,8 +233,8 @@ start_bot() {
       node launcher.js
     fi
     
-    sleep 1
-    printf "\n${BLUE}[! Jurandir] O processo foi fechado! Reiniciando, aguarde...${NOCOLOR}\n"
+    log_warn "O processo foi encerrado! Reiniciando a aplicação em 2 segundos..."
+    sleep 2
   done
 }
 
@@ -98,34 +242,26 @@ show_menu() {
   while :
   do
     show_banner
+    printf "${CYAN}╭─────────────────────────────────────────────────────────────╮${NOCOLOR}\n"
+    printf "${CYAN}│${WHITE} [ 1 ] 🟢 Iniciar: Modo QR Code                              ${CYAN}│${NOCOLOR}\n"
+    printf "${CYAN}│${GRAY}       Inicia o bot e exibe o código no terminal.            ${CYAN}│${NOCOLOR}\n"
+    printf "${CYAN}│${WHITE} [ 2 ] 🔵 Iniciar: Modo Pairing Code                         ${CYAN}│${NOCOLOR}\n"
+    printf "${CYAN}│${GRAY}       Inicia o bot solicitando o código no WhatsApp.        ${CYAN}│${NOCOLOR}\n"
+    printf "${CYAN}├─────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
+    printf "${CYAN}│${WHITE} [ 3 ] 🔄 Forçar Instalação da Última Versão                 ${CYAN}│${NOCOLOR}\n"
+    printf "${CYAN}│${GRAY}       Limpa o diretório e baixa o último release oficial.   ${CYAN}│${NOCOLOR}\n"
+    printf "${CYAN}│${WHITE} [ 4 ] 📜 Explorar e Instalar Versões Anteriores             ${CYAN}│${NOCOLOR}\n"
+    printf "${CYAN}│${GRAY}       Lista o histórico do GitHub para downgrade/upgrade.   ${CYAN}│${NOCOLOR}\n"
+    printf "${CYAN}├─────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
+    printf "${CYAN}│${WHITE} [ 5 ] 🧹 Manutenção: Reinstalar Dependências (NPM)          ${CYAN}│${NOCOLOR}\n"
+    printf "${CYAN}│${GRAY}       Apaga cache de módulos e realiza nova instalação.     ${CYAN}│${NOCOLOR}\n"
+    printf "${CYAN}│${WHITE} [ 6 ] 🗑️  Segurança: Desconectar WhatsApp                     ${CYAN}│${NOCOLOR}\n"
+    printf "${CYAN}│${GRAY}       Exclui chaves do SQLite exigindo novo login.          ${CYAN}│${NOCOLOR}\n"
+    printf "${CYAN}├─────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
+    printf "${CYAN}│${WHITE} [ 0 ] ❌ Sair da Interface                                  ${CYAN}│${NOCOLOR}\n"
+    printf "${CYAN}╰─────────────────────────────────────────────────────────────╯${NOCOLOR}\n\n"
     
-    COLS=$(tput cols 2>/dev/null || echo 80)
-    MENU_WIDTH=56
-    PAD=$(( (COLS - MENU_WIDTH) / 2 ))
-    if [ "$PAD" -lt 0 ]; then PAD=0; fi
-    SPACES=$(printf '%*s' "$PAD" "")
-
-    printf "\n"
-    printf "${SPACES}${CYAN}╭──────────────────────────────────────────────────────╮${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${WHITE}               PAINEL DE GERENCIAMENTO                ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}├──────────────────────────────────────────────────────┤${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${GREEN}  [ 1 ]${WHITE} Iniciar Bot por QR Code                       ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${GREEN}  [ 2 ]${WHITE} Iniciar Bot por Código (Pairing)              ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}├──────────────────────────────────────────────────────┤${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${YELLOW}  [ 3 ]${WHITE} Instalar Bot do Zero (Download Total)         ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${YELLOW}  [ 4 ]${WHITE} Forçar Verificação de Atualizações            ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${YELLOW}  [ 5 ]${WHITE} Restaurar Sistema (Limpeza e Download)        ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}├──────────────────────────────────────────────────────┤${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${BLUE}  [ 6 ]${WHITE} Instalar Módulos (npm install)                ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${BLUE}  [ 7 ]${WHITE} Apagar node_modules e package-lock            ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}├──────────────────────────────────────────────────────┤${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${RED}  [ 8 ]${WHITE} Limpar Sessões SQLite (Preserva Credenciais)  ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${RED}  [ 9 ]${WHITE} Apagar Sessão Completa (Requer novo Login)    ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}├──────────────────────────────────────────────────────┤${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${RED}  [ 0 ]${WHITE} Sair do Script                                ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}╰──────────────────────────────────────────────────────╯${NOCOLOR}\n\n"
-    
-    printf "${SPACES}${YELLOW}  ➭ Opção: ${NOCOLOR}"
+    printf "${YELLOW}  ➭ Qual operação deseja executar? ${NOCOLOR}"
     read OPTION
     
     case $OPTION in
@@ -133,74 +269,63 @@ show_menu() {
       2) start_bot "--code" ;;
       3) 
         detect_env
-        printf "\n${YELLOW}[⚙] Iniciando download do sistema...${NOCOLOR}\n"
-        node scripts/updater.js force
-        printf "\n${YELLOW}[+] Baixando dependências (npm)...${NOCOLOR}\n"
-        npm install $NPM_FLAG
-        printf "\n${GREEN}[✓] Instalação Concluída!${NOCOLOR} Pressione ENTER para voltar."
-        read PAUSE
+        printf "\n"
+        log_warn "Isso fará uma limpeza completa dos arquivos locais (mantendo o Database)."
+        printf "${YELLOW}Confirmar Instalação Limpa? [s/N]: ${NOCOLOR}"
+        read CONFIRM_DL
+        if [[ "$CONFIRM_DL" =~ ^[sS]$ ]]; then
+          clean_workspace
+          bootstrap_updater
+          log_step "Baixando o sistema base..."
+          node scripts/updater.js force
+          log_step "Instalando Módulos do Sistema..."
+          npm install $NPM_FLAG >/dev/null 2>&1
+          log_succ "Instalação Concluída!"
+        fi
+        printf "\nPressione ENTER para voltar."
+        read -r
         ;;
       4) 
-        check_updates
-        printf "\n${GREEN}[✓] Operação finalizada!${NOCOLOR} Pressione ENTER para voltar."
-        read PAUSE
+        explore_versions 
         ;;
-      5) 
-        detect_env
-        printf "\n${YELLOW}[-] Removendo cache local...${NOCOLOR}\n"
-        rm -rf node_modules package-lock.json src/
-        printf "\n${YELLOW}[⚙] Refazendo download dos arquivos...${NOCOLOR}\n"
-        node scripts/updater.js force
-        printf "\n${YELLOW}[+] Reinstalando módulos...${NOCOLOR}\n"
+      5)
+        printf "\n"
+        log_step "Apagando node_modules e arquivos de trava..."
+        rm -rf node_modules package-lock.json
+        log_step "Instalando dependências ativas..."
         npm install $NPM_FLAG
-        printf "\n${GREEN}[✓] Sistema restaurado!${NOCOLOR} Pressione ENTER para voltar."
-        read PAUSE
+        log_succ "Ambiente node_modules restaurado."
+        printf "\nPressione ENTER para voltar."
+        read -r
         ;;
       6)
-        printf "\n${SPACES}${YELLOW}[+ Jurandir] Instalando dependências...${NOCOLOR}\n"
-        npm install $NPM_FLAG
-        printf "\n${SPACES}${GREEN}[✓ Jurandir] Concluído!${NOCOLOR} Pressione ENTER para voltar."
-        read PAUSE
-        ;;
-      7)
-        printf "\n${SPACES}${YELLOW}[- Jurandir] Apagando node_modules...${NOCOLOR}\n"
-        rm -rf node_modules package-lock.json
-        printf "\n${SPACES}${GREEN}[✓ Jurandir] Concluído!${NOCOLOR} Pressione ENTER para voltar."
-        read PAUSE
-        ;;
-      8)
+        printf "\n"
         if [ ! -f "$DB_PATH" ]; then
-           printf "\n${SPACES}${RED}[x Jurandir] O banco de dados SQLite não foi encontrado.${NOCOLOR}\n"
+           log_err "O banco de dados SQLite não foi encontrado."
         else
-           printf "\n${SPACES}${YELLOW}[- Jurandir] Limpando chaves e histórico de conexão...${NOCOLOR}\n"
+           log_step "Limpando chaves de segurança..."
            node -e "import('./src/configs/database.js').then(m => m.dbRun('DELETE FROM auth_keys')).catch(() => process.exit(1));"
-           printf "${SPACES}${GREEN}[✓ Jurandir] Limpeza concluída! Você continua logado.${NOCOLOR}\n"
+           log_succ "Desconexão executada! O bot solicitará novo QR/Code."
         fi
-        printf "\n${SPACES}Pressione ENTER para voltar."
-        read PAUSE
-        ;;
-      9)
-        printf "\n${SPACES}${RED}[! Jurandir] Apagando banco de dados inteiro...${NOCOLOR}\n"
-        rm -f "$DB_PATH" "${DB_PATH}-wal" "${DB_PATH}-shm"
-        printf "${SPACES}${GREEN}[✓ Jurandir] Sessão apagada com sucesso!${NOCOLOR}\n"
-        printf "\n${SPACES}Pressione ENTER para voltar."
-        read PAUSE
+        printf "\nPressione ENTER para voltar."
+        read -r
         ;;
       0)
-        printf "\n${SPACES}${GREEN}Saindo...${NOCOLOR}\n"
+        printf "\n${GREEN}Finalizando operações...${NOCOLOR}\n"
         exit 0
         ;;
       *)
-        printf "\n${SPACES}${RED}[x] Opção inválida!${NOCOLOR} Pressione ENTER para tentar novamente."
-        read PAUSE
+        printf "\n"
+        log_err "Comando não reconhecido."
+        sleep 1
         ;;
     esac
   done
 }
 
-if [ "$1" = "não" ] || [ "$1" = "qr" ]; then
+if [ "$1" = "qr" ]; then
   start_bot
-elif [ "$1" = "sim" ] || [ "$1" = "--code" ] || [ "$1" = "code" ]; then
+elif [ "$1" = "code" ]; then
   start_bot "--code"
 else
   show_menu

@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "build_time": 1783452159625,
+  "build_time": 1783456805526,
   "files": {
     ".editorconfig": "999c374e129517658aa4fd08a4879fefc20df9717d792153a460ae36afe4904f",
     ".prettierrc": "af43a3ad42a61ed745fc18d44faf9fceec0ee155a4e128487be4ac7569c986de",
@@ -45,6 +45,6 @@
     "src/utils/message.js": "3d07e1b594d28398845de64b16d4c8c700c20e99049cff11feb9a449825ba00b",
     "src/utils/string.js": "816b4c8ead9b64d063997da202de3815e698ed73c43e62dcae3565fd2ee80350",
     "src/utils/unicode.js": "0f2378d8f0f910ebd9a2a4f067e6ac2901df044f609fcc2acc8d341d467cbe51",
-    "start.sh": "e6080f3a0fcad7f7cf963a8f61de816539638ad19ac415b49d36db4793e6cada"
+    "start.sh": "0aa628673e96563b147a9df917c676848fedfe89cb3a760742f5c9f8b1d18097"
   }
 }
