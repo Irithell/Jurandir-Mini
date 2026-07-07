@@ -7,7 +7,7 @@ database/addons/
 database/media/gifs/tmp/
 
 src/addons/
-scripts/
+scripts/build.js
 
 tmp/*
 !tmp/.gitkeep
