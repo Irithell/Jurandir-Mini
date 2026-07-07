@@ -5,16 +5,16 @@ import { getByCategory } from '../commands/registry.js';
 
 const SUBMENU_TEMPLATE = {
   header: `╭══════════════════════╗
-╰╮  🎀 𝙳𝙰𝚃𝙰: {{DATA}}
-╭┤  ⏳ 𝙷𝙾𝚁𝙰: {{HORA}}
+╰╮  🐾 𝙳𝙰𝚃𝙰: {{DATA}}
+╭┤  ⏰ 𝙷𝙾𝚁𝙰: {{HORA}}
 ╰╮  ⚡ 𝙿𝙸𝙽𝙶: {{PING}}ms
-╭┤  🌸 𝚂𝚃𝙰𝚃𝚄𝚂: 𝙾𝙽𝙻𝙸𝙽𝙴
+╭┤  🐈 𝚂𝚃𝙰𝚃𝚄𝚂: 𝙾𝙽𝙻𝙸𝙽𝙴
 ┃╰═════════════════════╝
 ╰╔═════════════════════╗
-╭┤         📂  {{CATEGORY_NAME}}
+╭┤         📦  {{CATEGORY_NAME}}
 ┃╚═════════════════════╝`,
   commandLine: `┃ \n┃ {{EMOJI}} {{PREFIX}}{{CMD_NAME}}`,
-  footer: `\n╰╔═════════════════════╗\n╭┤           🎀  {{BOT_NAME}}  🎀\n╰╚═════════════════════╝`,
+  footer: `\n╰╔═════════════════════╗\n╭┤           🐾  {{BOT_NAME}}  🐾\n╰╚═════════════════════╝`,
 };
 
 /**
@@ -35,14 +35,14 @@ export function generateMenuCommand(category) {
     const startTime = Date.now();
 
     if (info.key) {
-      await react(jurandir, from, '🎀', info.key);
+      await react(jurandir, from, '🐾', info.key);
     }
 
     const commands = getByCategory(category);
 
     if (commands.length === 0) {
       await jurandir.sendMessage(from, {
-        text: `> Nenhum feitiço encontrado na categoria ${category}`,
+        text: `> Nenhum comando encontrado na categoria ${category} 😿`,
       });
       return;
     }
@@ -58,10 +58,10 @@ export function generateMenuCommand(category) {
       .replace('{{PING}}', String(ping))
       .replace('{{CATEGORY_NAME}}', toUnicodeBoldUpper(`COMANDOS ${category.toUpperCase()}`));
 
-    const fateEmojis = ['⚔️', '🛡️', '🎀', '🌸', '✨', '🏇', '🦅', '👑', '📜', '⚜️'];
+    const catEmojis = ['🐾', '🐈', '🐱', '🧶', '🐟', '🥛', '🐭', '🐁', '😽', '😼'];
 
     for (const cmd of commands) {
-      const randomEmoji = fateEmojis[Math.floor(Math.random() * fateEmojis.length)];
+      const randomEmoji = catEmojis[Math.floor(Math.random() * catEmojis.length)];
 
       bodyText +=
         '\n' +

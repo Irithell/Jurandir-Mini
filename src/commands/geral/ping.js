@@ -1,20 +1,6 @@
-function formatUptime(milliseconds) {
-  const seconds = Math.floor(milliseconds / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
+export const description = 'Verifica a latência do bot e o uso de hardware';
 
-  return `${days.toString().padStart(2, '0')} D ${(hours % 24).toString().padStart(2, '0')} H ${(minutes % 60).toString().padStart(2, '0')} Min ${(seconds % 60).toString().padStart(2, '0')} Seg`;
-}
-
-function formatBytes(bytes) {
-  const gb = bytes / 1024 ** 3;
-  if (gb >= 1) return `${gb.toFixed(2)} GB`;
-  return `${(bytes / 1024 ** 2).toFixed(2)} MB`;
-}
-
-export const description = 'Verifica a latência do bot';
-
+/** @type {import('@/types/commands.d.ts').CommandFunction} */
 export default async ({
   jurandir,
   from,
@@ -23,11 +9,8 @@ export default async ({
   uptime,
   ramTotal,
   ramUsada,
-  react,
-  reply,
-  toUnicodeBoldUpper,
-  getAllGroups,
-  botConfig,
+  botName,
+  utils: { react, reply, toUnicodeBoldUpper, getAllGroups, formatUptime, formatBytes },
 }) => {
   const startTime = Date.now();
 
@@ -69,7 +52,7 @@ export default async ({
 ╭┤
 ┃╰═════════════════════╝
 ╰╔═════════════════════╗
-╭┤           🐱  ${botConfig.name}  🐱
+╭┤           🐱  ${botName}  🐱
 ╰╚═════════════════════╝`);
 
   await reply(jurandir, from, statusText, info);

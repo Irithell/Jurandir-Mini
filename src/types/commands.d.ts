@@ -17,14 +17,13 @@ export interface BotConfig {
   [key: string]: any;
 }
 
-export interface CommandContext {
-  jurandir: WASocket;
-  from: string;
-  info: WAMessage;
-  prefix: string;
-  botConfig: BotConfig;
-
+export interface CommandUtils {
+  formatUptime: (milliseconds: number) => string;
+  formatBytes: (bytes: number) => string;
   toUnicodeBoldUpper: (text: string) => string;
+
+  logger: any;
+  cache: any;
 
   // ========== PRESENCE ==========
   sendTyping: (jurandir: WASocket, jid: string) => Promise<void>;
@@ -179,6 +178,30 @@ export interface CommandContext {
     quotedMessage?: WAMessage
   ) => Promise<void>;
   sendButton: (jurandir: WASocket, to: string, payload: InteractivePayload) => Promise<void>;
+
+  [key: string]: any;
+}
+
+export interface CommandContext {
+  jurandir: WASocket;
+  from: string;
+  info: WAMessage;
+  body: string;
+  command: string;
+  args: string[];
+  prefix: string;
+  userJid: string;
+  isGroup: boolean;
+  botConfig: BotConfig;
+  os: typeof import('node:os');
+  uptime: number;
+  ramUsada: number;
+  ramTotal: number;
+
+  utils: CommandUtils;
+
+  sleep: (ms: number) => Promise<void>;
+  forward: (data: any) => void;
 
   [key: string]: any;
 }

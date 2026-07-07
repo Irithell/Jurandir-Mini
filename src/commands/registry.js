@@ -5,20 +5,12 @@ import { ConsoleLogger } from '../utils/logger.js';
 import { generateMenuCommand } from '../core/menu-generator.js';
 import { removeAccents } from '../utils/string.js';
 
-/** @typedef {import('@/types/commands.d.ts').CommandFunction} CommandFunction */
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/** @type {Map<string, CommandFunction>} */
 export const commandRegistry = new Map();
-
-/** @type {Map<string, any>} */
 export const noPrefixRegistry = new Map();
 
-/**
- * @param {string} category
- */
 export function getByCategory(category) {
   const cmds = [];
   for (const [name, fn] of commandRegistry.entries()) {
@@ -52,7 +44,7 @@ export async function loadCommands() {
           const module = await import(`file://${filePath}`);
 
           if (typeof module.default === 'function') {
-            const cmdFn = /** @type {CommandFunction} */ (module.default);
+            const cmdFn = module.default;
 
             cmdFn.category = folder.name;
             cmdFn.description = module.description || '';
@@ -61,15 +53,12 @@ export async function loadCommands() {
             commandRegistry.set(commandName, cmdFn);
 
             if (module.noPrefixConfig) {
-              const rawConfig = module.noPrefixConfig;
-              noPrefixRegistry.set(commandName, {
-                config: {
-                  matchType: rawConfig.matchType || 'exact',
+              const normalizedTriggers = module.noPrefixConfig.triggers.map((t) =>
+                removeAccents(t).toLowerCase().trim()
+              );
 
-                  triggers: (rawConfig.triggers || []).map((t) =>
-                    removeAccents(t).toLowerCase().trim()
-                  ),
-                },
+              noPrefixRegistry.set(commandName, {
+                config: { ...module.noPrefixConfig, triggers: normalizedTriggers },
                 execute: cmdFn,
               });
             }
@@ -78,7 +67,7 @@ export async function loadCommands() {
 
             if (module.aliases && Array.isArray(module.aliases)) {
               for (const alias of module.aliases) {
-                const aliasFn = /** @type {CommandFunction} */ (async (ctx) => cmdFn(ctx));
+                const aliasFn = async (ctx) => cmdFn(ctx);
                 aliasFn.category = folder.name;
                 aliasFn.description = cmdFn.description;
                 aliasFn.isAlias = true;
@@ -88,18 +77,17 @@ export async function loadCommands() {
             }
           }
         } catch (err) {
-          const errorMessage = err instanceof Error ? err.message : String(err);
           ConsoleLogger.dispatch({
             level: 'error',
             lines: [
-              { message: `Erro ao carregar o comando ${file}:`, tags: [{ label: 'CMD' }] },
-              { message: errorMessage, omitTimestamp: true },
+              { message: `Erro ao carregar ${file}:`, tags: [{ label: 'REGISTRY' }] },
+              { message: err.message, omitTimestamp: true },
             ],
           });
         }
       }
 
-      const generatedMenuFn = /** @type {CommandFunction} */ (generateMenuCommand(folder.name));
+      const generatedMenuFn = generateMenuCommand(folder.name);
       generatedMenuFn.category = 'info';
       generatedMenuFn.isAlias = false;
 
@@ -110,7 +98,7 @@ export async function loadCommands() {
       level: 'success',
       lines: [
         {
-          message: `${loadedCount} comandos e submenus gerados automaticamente`,
+          message: `${loadedCount} comando(s) e submenus carregados.`,
           tags: [{ label: 'REGISTRY' }],
         },
       ],

@@ -4,6 +4,7 @@ import { botConfig } from '../../configs/bot.config.js';
 import { ConsoleLogger } from '../../utils/logger.js';
 import { buildCommandContext } from '../context.js';
 import { removeAccents } from '../../utils/string.js';
+import { getChain, getForwardedData } from '../addon-loader.js';
 
 /**
  * @typedef {import('@whiskeysockets/baileys').WASocket} WASocket
@@ -26,6 +27,68 @@ setInterval(
 ).unref();
 
 /**
+ * @param {CommandContext} ctx
+ * @param {ReturnType<typeof extractMessageData>} extractedData
+ */
+async function runNativeFallback(ctx, extractedData) {
+  if (extractedData.command) {
+    const cmdFunction = commandRegistry.get(extractedData.command);
+
+    if (cmdFunction) {
+      ConsoleLogger.dispatch({
+        level: 'info',
+        lines: [
+          {
+            message: `chamado por ${extractedData.userJid}`,
+            tags: [
+              { label: 'CMD' },
+              { label: extractedData.command.toUpperCase(), theme: { bg: '#8A2BE2', fg: '#FFF' } },
+            ],
+          },
+        ],
+      });
+
+      await cmdFunction(ctx);
+    }
+    return;
+  }
+
+  if (extractedData.body && noPrefixRegistry.size > 0) {
+    const normalizedBody = removeAccents(extractedData.body).toLowerCase().trim();
+
+    for (const [cmdName, noPrefixCmd] of noPrefixRegistry.entries()) {
+      const { matchType, triggers } = noPrefixCmd.config;
+
+      const isMatched = triggers.some((trigger) => {
+        if (matchType === 'exact') return normalizedBody === trigger;
+        if (matchType === 'startsWith') return normalizedBody.startsWith(trigger);
+        if (matchType === 'includes') return normalizedBody.includes(trigger);
+        return false;
+      });
+
+      if (isMatched) {
+        ConsoleLogger.dispatch({
+          level: 'info',
+          lines: [
+            {
+              message: `chamado por ${extractedData.userJid}`,
+              tags: [
+                { label: 'CMD S/ PREF' },
+                { label: cmdName.toUpperCase(), theme: { bg: '#FF4500', fg: '#FFF' } },
+              ],
+            },
+          ],
+        });
+
+        extractedData.command = cmdName;
+        await noPrefixCmd.execute(ctx);
+        return;
+      }
+    }
+  }
+}
+
+/**
  * @param {WASocket} jurandir
  * @param {any} data
  */
@@ -42,74 +105,23 @@ export async function handleMessage(jurandir, data) {
 
   try {
     const extractedData = extractMessageData(message, botConfig.prefix);
-
     if (!extractedData) return;
 
-    if (extractedData.command) {
-      const cmdFunction = commandRegistry.get(extractedData.command);
+    const ctx = buildCommandContext(jurandir, extractedData, message);
+    const { gates, processes } = getChain();
 
-      if (cmdFunction) {
-        ConsoleLogger.dispatch({
-          level: 'info',
-          lines: [
-            {
-              message: `chamado por ${extractedData.userJid}`,
-              tags: [
-                { label: 'CMD' },
-                {
-                  label: extractedData.command.toUpperCase(),
-                  theme: { bg: '#8A2BE2', fg: '#FFF' },
-                },
-              ],
-            },
-          ],
-        });
-
-        const ctx = /** @type {CommandContext} */ (
-          buildCommandContext(jurandir, extractedData, message)
-        );
-        await cmdFunction(ctx);
-      }
-      return;
+    for (const gate of gates) {
+      const passed = await gate(ctx);
+      if (passed === false) return;
     }
 
-    if (extractedData.body && noPrefixRegistry.size > 0) {
-      const normalizedBody = removeAccents(extractedData.body).toLowerCase().trim();
-
-      for (const [cmdName, noPrefixCmd] of noPrefixRegistry.entries()) {
-        const { matchType, triggers } = noPrefixCmd.config;
-
-        const isMatched = triggers.some((trigger) => {
-          if (matchType === 'exact') return normalizedBody === trigger;
-          if (matchType === 'startsWith') return normalizedBody.startsWith(trigger);
-          if (matchType === 'includes') return normalizedBody.includes(trigger);
-          return false;
-        });
-
-        if (isMatched) {
-          ConsoleLogger.dispatch({
-            level: 'info',
-            lines: [
-              {
-                message: `chamado por ${extractedData.userJid}`,
-                tags: [
-                  { label: 'CMD S/ PREF' },
-                  { label: cmdName.toUpperCase(), theme: { bg: '#FF4500', fg: '#FFF' } },
-                ],
-              },
-            ],
-          });
-
-          extractedData.command = cmdName;
-
-          const ctx = /** @type {CommandContext} */ (
-            buildCommandContext(jurandir, extractedData, message)
-          );
-          await noPrefixCmd.execute(ctx);
-          return;
-        }
-      }
+    if (processes.length > 0) {
+      const results = await Promise.all(processes.map((fn) => fn(ctx)));
+      const consumed = results.some((r) => r === false);
+      if (consumed && !getForwardedData(ctx)) return;
     }
+
+    await runNativeFallback(ctx, getForwardedData(ctx) ?? extractedData);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     ConsoleLogger.dispatch({

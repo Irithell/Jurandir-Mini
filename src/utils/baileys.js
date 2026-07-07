@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
  * @typedef {import('@whiskeysockets/baileys').WAMessage} WAMessage
  * @typedef {import('@/types/baileys.d.ts').ExtractedMessageData} ExtractedMessageData
  * @typedef {import('@/types/baileys.d.ts').ExtractedMessageContent} ExtractedMessageContent
- * @typedef {Parameters<typeof downloadContentFromMessage>[1]} BaileysMediaType */
+ * @typedef {Parameters<typeof downloadContentFromMessage>[1]} BaileysMediaType
+ */
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +17,7 @@ const TEMP_DIR = path.resolve(__dirname, '../../tmp');
 /**
  * @param {WAMessage} message
  * @param {string} context
+ * @returns {any}
  */
 export function getContent(message, context) {
   const viewOnceMsg =
@@ -23,13 +25,15 @@ export function getContent(message, context) {
     message.message?.viewOnceMessageV2?.message ||
     message.message?.viewOnceMessageV2Extension?.message;
 
+  const key = `${context}Message`;
+
   if (viewOnceMsg) {
-    return viewOnceMsg[`${context}Message`];
+    return /** @type {any} */ (viewOnceMsg)[key];
   }
 
   return (
-    message.message?.[`${context}Message`] ||
-    message.message?.extendedTextMessage?.contextInfo?.quotedMessage?.[`${context}Message`]
+    /** @type {any} */ (message.message)?.[key] ||
+    /** @type {any} */ (message.message?.extendedTextMessage?.contextInfo?.quotedMessage)?.[key]
   );
 }
 

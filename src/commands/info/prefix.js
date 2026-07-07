@@ -7,9 +7,10 @@ export const noPrefixConfig = {
   triggers: ['prefix', 'prefixo', 'prefixo do bot'],
 };
 
-export default async ({ jurandir, from, info, reply, prefix, toUnicodeBoldUpper }) => {
+/** @type {import('@/types/commands.d.ts').CommandFunction} */
+export default async ({ jurandir, from, info, utils: { toUnicodeBoldUpper, reply }, prefix }) => {
   const texto = toUnicodeBoldUpper(
-    `🎀 O meu prefixo atual é: [ ${prefix} ]\n\nExemplo de uso: ${prefix}menu`
+    `🐱 O meu prefixo atual é: [ ${prefix} ]\n\nExemplo de uso: ${prefix}menu`
   );
 
   await reply(jurandir, from, texto, info);

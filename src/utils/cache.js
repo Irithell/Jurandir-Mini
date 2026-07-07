@@ -16,8 +16,6 @@ const allGroupsMemoryCache = new Map();
 /** @type {Map<string, Promise<GroupMetadata | undefined>>} */
 const metadataInflightRequests = new Map();
 
-// ==================== WRITE ====================
-
 /**
  * @param {string} groupId
  * @param {GroupMetadata} metadata
@@ -25,7 +23,6 @@ const metadataInflightRequests = new Map();
 export function setGroupMetadataCache(groupId, metadata) {
   memoryCache.set(groupId, { data: metadata, timestamp: Date.now() });
 
-  // Atualiza a view de todos os grupos se ela existir
   const allHit = allGroupsMemoryCache.get('all');
   if (allHit) {
     allHit.data[groupId] = metadata;
@@ -39,14 +36,6 @@ export function setGroupMetadataCache(groupId, metadata) {
   });
 }
 
-// ==================== WARMUP ====================
-
-/**
- * Popula a RAM com todos os grupos salvos no SQLite.
- * Deve ser chamado uma única vez na inicialização, antes do socket conectar.
- * Não faz nenhuma chamada de rede — apenas move dados do disco para a memória.
- * A revalidação individual acontece em background quando cada grupo for acessado.
- */
 export function warmupCache() {
   try {
     const rows = dbCacheAll(
@@ -65,7 +54,7 @@ export function warmupCache() {
         memoryCache.set(row.jid, { data: metadata, timestamp: ts });
         allGroups[row.jid] = metadata;
       } catch {
-        // linha corrompida — ignora
+        // ignore
       }
     }
 
@@ -73,16 +62,11 @@ export function warmupCache() {
       allGroupsMemoryCache.set('all', { data: allGroups, timestamp: Date.now() });
     }
   } catch {
-    // DB ainda não pronto ou vazio — segue sem warmup
+    // ignore
   }
 }
 
-// ==================== READ: grupo individual ====================
-
 /**
- * Revalida um único grupo em background (ou aguarda se waitForNetwork=true).
- * Rate limit: 300ms entre requisições individuais.
- *
  * @param {WASocket} jurandir
  * @param {string} groupId
  * @param {boolean} waitForNetwork
@@ -110,10 +94,6 @@ async function revalidateGroupMetadata(jurandir, groupId, waitForNetwork = false
 }
 
 /**
- * Retorna metadados de um grupo.
- * Ordem: RAM → DB → rede.
- * Se o dado estiver stale, serve o cache e revalida em background (SWR).
- *
  * @param {WASocket} jurandir
  * @param {string} groupId
  * @returns {Promise<GroupMetadata | undefined>}
@@ -121,7 +101,6 @@ async function revalidateGroupMetadata(jurandir, groupId, waitForNetwork = false
 export async function getGroupMetadataCache(jurandir, groupId) {
   const now = Date.now();
 
-  // 1. RAM — serve imediato, revalida em background se stale
   const ramHit = memoryCache.get(groupId);
   if (ramHit) {
     if (now - ramHit.timestamp > CACHE_TTL) {
@@ -130,7 +109,6 @@ export async function getGroupMetadataCache(jurandir, groupId) {
     return ramHit.data;
   }
 
-  // 2. DB — carrega pra RAM, revalida em background se stale
   try {
     const row = dbCacheGet(
       'SELECT metadata, strftime("%s", updated_at) * 1000 AS ts FROM group_metadata WHERE jid = ?',
@@ -146,28 +124,19 @@ export async function getGroupMetadataCache(jurandir, groupId) {
       return metadata;
     }
   } catch {
-    // ignora erro de parse
+    // ignore
   }
 
-  // 3. Rede — grupo desconhecido, blocking
   return revalidateGroupMetadata(jurandir, groupId, true);
 }
 
-// ==================== READ: todos os grupos ====================
-
 /**
- * Retorna o mapa de todos os grupos a partir da RAM.
- * Não faz nenhuma chamada de rede — é uma view somente leitura do que foi
- * carregado pelo warmupCache e atualizado incrementalmente pelo setGroupMetadataCache.
- * Use getGroupMetadataCache para obter dados frescos de um grupo específico.
- *
  * @returns {Record<string, GroupMetadata>}
  */
 export function getAllGroupsCache() {
   const ramHit = allGroupsMemoryCache.get('all');
   if (ramHit) return ramHit.data;
 
-  // Reconstrói a partir dos grupos individuais (fallback pós-warmup)
   if (memoryCache.size > 0) {
     /** @type {Record<string, GroupMetadata>} */
     const rebuilt = {};

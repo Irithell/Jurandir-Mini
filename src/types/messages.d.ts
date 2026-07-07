@@ -3,8 +3,6 @@ import { WASocket, WAMessage } from '@whiskeysockets/baileys';
 
 export type MediaType = 'image' | 'video';
 
-// ==================== BUTTON TYPES ====================
-
 export interface CleanReplyButton {
   type: 'reply';
   id: string;
@@ -34,8 +32,6 @@ export interface CleanCopyButton {
 }
 
 export type CleanButton = CleanReplyButton | CleanListButton | CleanUrlButton | CleanCopyButton;
-
-// ==================== CARD & PAYLOAD ====================
 
 export interface InteractiveCard {
   header?: {

@@ -12,13 +12,13 @@ export const aliases = ['ajuda', 'help', 'comandos'];
 
 const MAIN_MENU_TEMPLATE = `
 ╭══════════════════════╗
-╰╮  🎀 𝙳𝙰𝚃𝙰: {{DATA}}
-╭┤  ⏳ 𝙷𝙾𝚁𝙰: {{HORA}}
+╰╮  🐾 𝙳𝙰𝚃𝙰: {{DATA}}
+╭┤  ⏰ 𝙷𝙾𝚁𝙰: {{HORA}}
 ╰╮  ⚡ 𝙿𝙸𝙽𝙶: {{PING}}ms
-╭┤  🌸 𝚂𝚃𝙰𝚃𝚄𝚂: 𝙾𝙽𝙻𝙸𝙽𝙴
+╭┤  🐈 𝚂𝚃𝙰𝚃𝚄𝚂: 𝙾𝙽𝙻𝙸𝙽𝙴
 ┃╰═════════════════════╝
 ╰╔═════════════════════╗
-╭┤    🏇  𝙼𝙴𝙽𝚄 𝙿𝚁𝙸𝙽𝙲𝙸𝙿𝙰𝙻  🏇
+╭┤    🐱  𝙼𝙴𝙽𝚄 𝙿𝚁𝙸𝙽𝙲𝙸𝙿𝙰𝙻  🐱
 ┃╚═════════════════════╝`;
 
 function getCategoryFolders() {
@@ -37,15 +37,13 @@ export default async ({
   from,
   info,
   prefix,
-  react,
-  sendButton,
-  toUnicodeBoldUpper,
+  utils: { react, toUnicodeBoldUpper, sendButton },
   botConfig,
 }) => {
   const startTime = Date.now();
 
   if (info.key) {
-    await react(jurandir, from, '🎀', info.key);
+    await react(jurandir, from, '🐱', info.key);
   }
 
   const now = new Date();
@@ -59,8 +57,8 @@ export default async ({
     .replace('{{HORA}}', localTime)
     .replace('{{PING}}', String(ping));
 
-  const fateEmojis = ['⚔️', '🛡️', '🎀', '🌸', '✨', '🏇', '🦅', '👑', '📜', '⚜️'];
-  const shuffledEmojis = [...fateEmojis].sort(() => Math.random() - 0.5);
+  const catEmojis = ['🐾', '🐈', '🐱', '🧶', '🐟', '🥛', '🐭', '🐁', '😽', '😼'];
+  const shuffledEmojis = [...catEmojis].sort(() => Math.random() - 0.5);
 
   let totalCommandsCount = 0;
 
@@ -82,7 +80,7 @@ export default async ({
   const botName = botConfig.name.toUpperCase();
 
   await sendButton(jurandir, from, {
-    bodyText: toUnicodeBoldUpper(`${botName} - GRIMÓRIO DE COMANDOS`),
+    bodyText: toUnicodeBoldUpper(`${botName} - CAIXA DE COMANDOS`),
     cards: [
       {
         header: { mediaUrl: bannerUrl, mediaType: 'image' },

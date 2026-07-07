@@ -3,6 +3,7 @@ package-lock.json
 
 database/cache
 database/sessions
+database/addons
 database/media/gifs/tmp
 src/addons/
 

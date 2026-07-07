@@ -5,10 +5,10 @@
   "type": "module",
   "main": "src/client/client.js",
   "scripts": {
-    "start": "node src/client/client.js",
-    "start:code": "node src/client/client.js --code",
-    "dev": "node --watch src/client/client.js",
-    "dev:code": "node --watch src/client/client.js --code",
+    "start": "node launcher.js",
+    "start:code": "node launcher.js --code",
+    "dev": "node launcher.js",
+    "dev:code": "node launcher.js --code",
     "lint": "eslint \"src/**/*.js\"",
     "lint:fix": "eslint \"src/**/*.js\" --fix",
     "format": "prettier --write \"src/**/*.js\""
@@ -17,10 +17,11 @@
   "license": "MIT",
   "dependencies": {
     "@hapi/boom": "^9.1.4",
+    "@irithell-js/better-sqlite3-termux": "^1.0.6",
     "@irithell-js/illustrator": "^0.1.0",
     "@whiskeysockets/baileys": "npm:@irithell-js/baileys@latest",
-    "@irithell-js/better-sqlite3-termux": "^1.0.6",
     "chalk": "^5.6.2",
+    "chokidar": "^5.0.0",
     "dotenv": "^17.3.1",
     "linkify-it": "^5.0.0",
     "moment-timezone": "^0.6.0",
