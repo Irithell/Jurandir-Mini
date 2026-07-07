@@ -245,8 +245,7 @@ export async function bannerLog() {
 
   const cols = process.stdout.columns || 80;
 
-  // Calculando o padding para centralizar o banner no terminal
-  const bannerWidth = 102; // A largura fixa da string do banner
+  const bannerWidth = 102;
   const paddingLeftLength = Math.max(0, Math.floor((cols - bannerWidth) / 2));
   const paddingLeft = ' '.repeat(paddingLeftLength);
 
