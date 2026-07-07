@@ -1,7 +1,6 @@
 import { Chalk } from 'chalk';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { GifPlayer, BannerBlock, CompositeBlock } from '@irithell-js/illustrator';
 import moment from 'moment-timezone';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -18,17 +17,17 @@ const __dirname = path.dirname(__filename);
 const chalk = new Chalk({ level: 3 });
 const TIMEZONE = 'America/Sao_Paulo';
 
-const lcdMap = {
-  0: '🯰',
-  1: '🯱',
-  2: '🯲',
-  3: '🯳',
-  4: '🯴',
-  5: '🯵',
-  6: '🯶',
-  7: '🯷',
-  8: '🯸',
-  9: '🯹',
+const numberMap = {
+  0: '0',
+  1: '1',
+  2: '2',
+  3: '3',
+  4: '4',
+  5: '5',
+  6: '6',
+  7: '7',
+  8: '8',
+  9: '9',
 };
 
 /** @type {PaletteConfig} */
@@ -42,7 +41,7 @@ const palette = {
 
 function getFormattedTime() {
   const time = moment().tz(TIMEZONE).format('HH:mm:ss');
-  return time.replace(/\d/g, (digit) => lcdMap[digit] ?? digit);
+  return time.replace(/\d/g, (digit) => numberMap[digit] ?? digit);
 }
 
 export class ConsoleLogger {
@@ -245,66 +244,18 @@ export async function bannerLog() {
     );
 
   const cols = process.stdout.columns || 80;
-  const rows = process.stdout.rows || 24;
 
-  const gifPath = path.resolve(__dirname, '../../database/media/gifs/cat.gif');
+  // Calculando o padding para centralizar o banner no terminal
+  const bannerWidth = 102; // A largura fixa da string do banner
+  const paddingLeftLength = Math.max(0, Math.floor((cols - bannerWidth) / 2));
+  const paddingLeft = ' '.repeat(paddingLeftLength);
 
-  const showBanner = cols >= 102;
-  const showGif = cols < 102 || rows >= 40;
+  console.clear();
+  console.log('\n');
 
-  if (showBanner && showGif) {
-    const bannerBlock = new BannerBlock(coloredLines, { alignment: 'center-h' });
-    const gifPlayer = await GifPlayer.create(
-      {
-        type: 'gif',
-        path: gifPath,
-        keep: true,
-        outDir: path.resolve(__dirname, '../../database/media/gifs/tmp'),
-      },
-      { width: 36, height: 18, colorMode: 'full', delay: 42, binaries: { strategy: 'auto' } }
-    );
-    const composite = new CompositeBlock({
-      alignment: 'center-h',
-      gap: 1,
-      clearScreen: true,
-      muteConsole: true,
-    });
+  coloredLines.forEach((line) => {
+    console.log(paddingLeft + line);
+  });
 
-    composite.add(bannerBlock);
-    composite.add(gifPlayer);
-
-    await composite.play({ loop: 1 });
-    composite.dispose();
-  } else if (showBanner && !showGif) {
-    const bannerBlock = new BannerBlock(coloredLines, { alignment: 'center-h' });
-    const composite = new CompositeBlock({
-      alignment: 'center-h',
-      clearScreen: true,
-      muteConsole: true,
-    });
-
-    composite.add(bannerBlock);
-    await composite.play({ loop: 1 });
-  } else if (!showBanner && showGif) {
-    const gifPlayer = await GifPlayer.create(
-      {
-        type: 'gif',
-        path: gifPath,
-        keep: true,
-        outDir: path.resolve(__dirname, '../../database/media/gifs/tmp'),
-      },
-      {
-        width: 36,
-        height: 18,
-        colorMode: 'full',
-        delay: 42,
-        alignment: 'center-vh',
-        clearScreen: true,
-        muteConsole: true,
-        binaries: { strategy: 'auto' },
-      }
-    );
-
-    await gifPlayer.play({ loop: 1 });
-  }
+  console.log('\n');
 }
