@@ -220,6 +220,13 @@ async function performUpdate(forceAll = false, isReinstall = false) {
       const destPath = path.join(ROOT_DIR, file);
       fs.mkdirSync(path.dirname(destPath), { recursive: true });
       fs.copyFileSync(srcPath, destPath);
+
+      if (file.endsWith('.sh')) {
+        try {
+          fs.chmodSync(destPath, 0o755);
+        } catch (e) {}
+      }
+
       logItem('32', 'APLICADO', file);
       appliedCount++;
     }

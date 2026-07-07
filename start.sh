@@ -15,6 +15,8 @@ API_URL="https://api.github.com/repos/$REPO/releases"
 DB_PATH="./database/sessions/jurandir.db"
 SPACES=""
 
+trap 'printf "\n\n${SPACES}${GREEN}[ ✓ ]${NOCOLOR} Sistema encerrado com segurança.\n"; exit 0' INT
+
 NPM_FLAG=""
 if [ -n "$PREFIX" ] && [ "$(echo "$PREFIX" | grep -o 'com.termux')" = "com.termux" ]; then
   NPM_FLAG="--no-bin-links"
@@ -130,6 +132,7 @@ check_updates() {
         create_backup
         node scripts/updater.mjs update
         if [ $? -eq 0 ]; then
+          chmod +x *.sh 2>/dev/null
           log_step "Instalando dependências..."
           npm install $NPM_FLAG >/dev/null 2>&1
           log_succ "Atualizado para v${REMOTE_VER}!"
@@ -192,6 +195,7 @@ explore_versions() {
         unzip -q -o pacote.zip
         if [ $? -eq 0 ]; then
           rm pacote.zip
+          chmod +x *.sh 2>/dev/null
           log_step "Instalando dependências..."
           npm install $NPM_FLAG >/dev/null 2>&1
           log_succ "Versão $TARGET_TAG instalada."
@@ -246,6 +250,7 @@ manage_backups() {
             log_step "Descompactando arquivos..."
             unzip -q -o "$TARGET"
             if [ $? -eq 0 ]; then
+              chmod +x *.sh 2>/dev/null
               log_step "Instalando dependências..."
               npm install $NPM_FLAG >/dev/null 2>&1
               log_succ "Backup restaurado com sucesso."
@@ -296,6 +301,7 @@ start_bot() {
        log_step "Baixando arquivos do sistema..."
        node scripts/updater.mjs reinstall
        if [ $? -eq 0 ]; then
+         chmod +x *.sh 2>/dev/null
          log_step "Instalando módulos..."
          npm install $NPM_FLAG >/dev/null 2>&1
          log_succ "Instalação concluída!"
@@ -312,7 +318,13 @@ start_bot() {
     
   while :; do
     if [ "$1" = "--code" ]; then node launcher.js --code; else node launcher.js; fi
-    log_warn "O processo foi interrompido. Reiniciando em 2 segundos..."
+    EXIT_CODE=$?
+    if [ $EXIT_CODE -eq 0 ]; then
+      printf "\n"
+      log_succ "Processo encerrado de forma limpa."
+      break
+    fi
+    log_warn "O processo foi interrompido (Erro $EXIT_CODE). Reiniciando em 2 segundos..."
     sleep 2
   done
 }
@@ -357,6 +369,7 @@ show_menu() {
           log_step "Baixando arquivos do sistema..."
           node scripts/updater.mjs reinstall
           if [ $? -eq 0 ]; then
+            chmod +x *.sh 2>/dev/null
             log_step "Instalando módulos..."
             npm install $NPM_FLAG >/dev/null 2>&1
             log_succ "Instalação concluída!"
