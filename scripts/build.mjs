@@ -14,6 +14,7 @@ const IGNORED_DIRS = [
   '.git',
   'tmp',
   'backups',
+  '.tmp_release',
   'src/addons',
   'database/addons',
   'database/cache',
