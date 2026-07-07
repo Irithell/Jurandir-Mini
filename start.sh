@@ -38,7 +38,7 @@ show_banner() {
   clear
   set_layout
   printf "${SPACES}${CYAN}╭───────────────────────────────────────────────────────────────╮${NOCOLOR}\n"
-  printf "${SPACES}${CYAN}│${WHITE} 🤖 JURANDIR MINI — CENTRAL DE GERENCIAMENTO AVANÇADO        ${CYAN}│${NOCOLOR}\n"
+  printf "${SPACES}${CYAN}│${WHITE}           JURANDIR MINI — CENTRAL DE GERENCIAMENTO            ${CYAN}│${NOCOLOR}\n"
   printf "${SPACES}${CYAN}╰───────────────────────────────────────────────────────────────╯${NOCOLOR}\n"
 }
 
@@ -49,10 +49,10 @@ detect_env() {
 }
 
 create_backup() {
-  printf "\n${SPACES}${YELLOW}Deseja fazer um backup de segurança antes de alterar? [S/n]: ${NOCOLOR}"
+  printf "\n${SPACES}${YELLOW}Deseja criar um backup de segurança? [S/n]: ${NOCOLOR}"
   read DO_BACKUP
   if [[ -z "$DO_BACKUP" ]] || [[ "$DO_BACKUP" =~ ^[sS]$ ]]; then
-    log_step "Empacotando projeto (ignorando módulos pesados)..."
+    log_step "Criando backup do sistema..."
     mkdir -p backups
     BKP_FILE="backups/bkp_$(date +%Y%m%d_%H%M%S).zip"
     zip -q -r "$BKP_FILE" . -x "node_modules/*" -x "backups/*"
@@ -61,7 +61,7 @@ create_backup() {
 }
 
 clean_workspace() {
-  log_step "Iniciando formatação limpa do sistema..."
+  log_step "Iniciando formatação do diretório..."
   mkdir -p .safe_zone
   [ -d "database" ] && mv database .safe_zone/
   [ -d "tmp" ] && mv tmp .safe_zone/
@@ -72,33 +72,34 @@ clean_workspace() {
   find . -mindepth 1 -maxdepth 1 ! -name '.safe_zone' -exec rm -rf {} +
   mv .safe_zone/* ./
   rm -rf .safe_zone
-  log_succ "Área de trabalho formatada com sucesso."
+  log_succ "Limpeza de diretório concluída."
 }
 
 bootstrap_updater() {
-  if [ ! -f "scripts/updater.js" ]; then
+  if [ ! -f "scripts/updater.mjs" ]; then
     log_step "Sincronizando mecanismo central..."
     mkdir -p scripts
     curl -sL -# "$LATEST_URL/manifest.json" -o .tmp_manifest.json
-    [ ! -s .tmp_manifest.json ] && { log_err "Falha na rede."; exit 1; }
+    [ ! -s .tmp_manifest.json ] && { log_err "Falha na comunicação de rede."; exit 1; }
     
-    curl -sL -# "$LATEST_URL/updater.js" -o scripts/updater.js
+    curl -sL -# "$LATEST_URL/updater.mjs" -o scripts/updater.mjs
     
-    NODE_VALIDATION=$(node -e "
-      const fs = require('fs'), crypto = require('crypto');
+    NODE_VALIDATION=$(node --input-type=module -e "
+      import fs from 'fs';
+      import crypto from 'crypto';
       try {
-        const hash = crypto.createHash('sha256').update(fs.readFileSync('scripts/updater.js')).digest('hex');
-        const expected = JSON.parse(fs.readFileSync('.tmp_manifest.json')).files['scripts/updater.js'];
+        const hash = crypto.createHash('sha256').update(fs.readFileSync('scripts/updater.mjs')).digest('hex');
+        const expected = JSON.parse(fs.readFileSync('.tmp_manifest.json')).files['scripts/updater.mjs'];
         console.log(hash === expected ? 'OK' : 'ERR');
       } catch(e) { console.log('ERR'); }
     ")
     
     if [ "$NODE_VALIDATION" = "OK" ]; then
       mv .tmp_manifest.json manifest.json
-      log_succ "Mecanismo autêntico."
+      log_succ "Validação autêntica."
     else
-      rm -f scripts/updater.js .tmp_manifest.json
-      log_err "Assinatura digital rejeitada."
+      rm -f scripts/updater.mjs .tmp_manifest.json
+      log_err "Assinatura rejeitada. Arquivo corrompido."
       exit 1
     fi
   fi
@@ -110,13 +111,13 @@ check_updates() {
   
   curl -sL "$LATEST_URL/manifest.json" -o .remote_manifest.json 2>/dev/null
   if [ -s .remote_manifest.json ]; then
-    REMOTE_VER=$(node -e "try { console.log(require('./.remote_manifest.json').version) } catch(e) {}")
-    LOCAL_VER=$(node -e "try { console.log(require('./manifest.json').version) } catch(e) { console.log('0.0.0') }")
+    REMOTE_VER=$(node --input-type=module -e "import fs from 'fs'; try { console.log(JSON.parse(fs.readFileSync('.remote_manifest.json')).version) } catch(e) {}")
+    LOCAL_VER=$(node --input-type=module -e "import fs from 'fs'; try { console.log(JSON.parse(fs.readFileSync('manifest.json')).version) } catch(e) { console.log('0.0.0') }")
     rm -f .remote_manifest.json
 
     if [ "$REMOTE_VER" != "$LOCAL_VER" ] && [ -n "$REMOTE_VER" ]; then
       printf "\n${SPACES}${YELLOW}╭───────────────────────────────────────────────────────────────╮${NOCOLOR}\n"
-      printf "${SPACES}${YELLOW}│ 🌟 ATUALIZAÇÃO DISPONÍVEL!                                  │${NOCOLOR}\n"
+      printf "${SPACES}${YELLOW}│ ATUALIZAÇÃO DISPONÍVEL                                        │${NOCOLOR}\n"
       printf "${SPACES}${YELLOW}├───────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
       printf "${SPACES}${YELLOW}│ Versão local: ${WHITE}v${LOCAL_VER}${NOCOLOR}\n"
       printf "${SPACES}${YELLOW}│ Nova versão:  ${GREEN}v${REMOTE_VER}${NOCOLOR}\n"
@@ -127,27 +128,34 @@ check_updates() {
       if [[ -z "$DO_UPDATE" ]] || [[ "$DO_UPDATE" =~ ^[sS]$ ]]; then
         printf "\n"
         create_backup
-        node scripts/updater.js update
+        node scripts/updater.mjs update
         if [ $? -eq 0 ]; then
-          log_step "Sincronizando dependências NPM..."
+          log_step "Instalando dependências..."
           npm install $NPM_FLAG >/dev/null 2>&1
           log_succ "Atualizado para v${REMOTE_VER}!"
         else
-          log_err "Falha ao aplicar o patch."
+          log_err "Falha na atualização."
         fi
         sleep 2
       fi
+    elif [ -n "$REMOTE_VER" ]; then
+      log_succ "O sistema já está na versão mais recente (v${LOCAL_VER})."
+    else
+      log_warn "Falha ao processar os dados da versão."
     fi
+  else
+    log_err "Falha ao verificar atualizações no servidor."
   fi
 }
 
 explore_versions() {
   show_banner
   detect_env
-  log_step "Consultando banco de dados oficial..."
+  log_step "Consultando repositório remoto..."
   
-  node -e "
-    const https = require('https'), fs = require('fs');
+  node --input-type=module -e "
+    import https from 'https';
+    import fs from 'fs';
     https.get('$API_URL', { headers: { 'User-Agent': 'Client' } }, (res) => {
       let data = '';
       res.on('data', c => data += c);
@@ -161,34 +169,38 @@ explore_versions() {
     }).on('error', () => console.log('ERRO'));
   " > .menu_out
   
-  [ $(grep -c "ERRO" .menu_out) -gt 0 ] && { log_err "Erro de rede."; rm -f .menu_out .rel_tmp.json; sleep 2; return; }
+  [ $(grep -c "ERRO" .menu_out) -gt 0 ] && { log_err "Falha de conexão."; rm -f .menu_out .rel_tmp.json; sleep 2; return; }
 
   printf "\n${SPACES}${YELLOW}=== HISTÓRICO DE VERSÕES ===${NOCOLOR}\n"
   cat .menu_out
   rm -f .menu_out
   
-  printf "\n${SPACES}${CYAN}Digite o NÚMERO da versão (ou deixe vazio): ${NOCOLOR}"
+  printf "\n${SPACES}${CYAN}Digite o NÚMERO da versão (ou deixe vazio para cancelar): ${NOCOLOR}"
   read V_INDEX
 
   if [[ "$V_INDEX" =~ ^[0-9]+$ ]]; then
-    TARGET_TAG=$(node -e "try { console.log(require('./.rel_tmp.json')[$V_INDEX].tag_name) } catch(e) {}")
+    TARGET_TAG=$(node --input-type=module -e "import fs from 'fs'; try { console.log(JSON.parse(fs.readFileSync('.rel_tmp.json'))[$V_INDEX].tag_name) } catch(e) {}")
     if [ -n "$TARGET_TAG" ]; then
-      printf "\n${SPACES}${RED}ATENÇÃO: A versão selecionada substituirá os arquivos atuais.${NOCOLOR}\n"
-      printf "${SPACES}${YELLOW}Confirmar Instalação Limpa (${TARGET_TAG})? [s/N]: ${NOCOLOR}"
+      printf "\n${SPACES}${RED}ATENÇÃO: Os arquivos atuais serão substituídos.${NOCOLOR}\n"
+      printf "${SPACES}${YELLOW}Confirmar instalação da versão ${TARGET_TAG}? [s/N]: ${NOCOLOR}"
       read CONFIRM_DL
       if [[ "$CONFIRM_DL" =~ ^[sS]$ ]]; then
         create_backup
         clean_workspace
-        log_step "Baixando release isolada..."
+        log_step "Baixando release oficial..."
         curl -L -# "https://github.com/$REPO/releases/download/$TARGET_TAG/jurandir-mini.zip" -o pacote.zip
         unzip -q -o pacote.zip
-        rm pacote.zip
-        log_step "Instalando Módulos..."
-        npm install $NPM_FLAG >/dev/null 2>&1
-        log_succ "Versão $TARGET_TAG operando."
+        if [ $? -eq 0 ]; then
+          rm pacote.zip
+          log_step "Instalando dependências..."
+          npm install $NPM_FLAG >/dev/null 2>&1
+          log_succ "Versão $TARGET_TAG instalada."
+        else
+          log_err "Falha ao extrair pacote."
+        fi
       fi
     else
-      log_err "Índice não existe."
+      log_err "Índice inválido."
     fi
   fi
   rm -f .rel_tmp.json
@@ -202,7 +214,7 @@ manage_backups() {
     printf "${SPACES}${YELLOW}=== GERENCIADOR DE BACKUPS ===${NOCOLOR}\n\n"
     
     if [ ! -d "backups" ] || [ -z "$(ls -A backups 2>/dev/null)" ]; then
-      log_warn "Nenhum arquivo de segurança foi encontrado."
+      log_warn "Nenhum backup localizado."
       printf "\n${SPACES}Pressione ENTER para voltar."
       read -r
       return
@@ -222,20 +234,24 @@ manage_backups() {
 
     case $B_OPT in
       [rR])
-        printf "\n${SPACES}${YELLOW}Número para restaurar: ${NOCOLOR}"
+        printf "\n${SPACES}${YELLOW}Número do backup: ${NOCOLOR}"
         read B_NUM
         if [[ "$B_NUM" =~ ^[0-9]+$ ]] && [ "$B_NUM" -gt 0 ] && [ "$B_NUM" -le "${#bkp_list[@]}" ]; then
           TARGET="${bkp_list[$((B_NUM-1))]}"
-          printf "\n${SPACES}${RED}A restauração sobrepõe seu código local atual.${NOCOLOR}\n"
+          printf "\n${SPACES}${RED}A restauração substituirá os arquivos atuais.${NOCOLOR}\n"
           printf "${SPACES}${YELLOW}Confirmar aplicação de $(basename "$TARGET")? [s/N]: ${NOCOLOR}"
           read CONFIRM
           if [[ "$CONFIRM" =~ ^[sS]$ ]]; then
             clean_workspace
-            log_step "Descompactando..."
+            log_step "Descompactando arquivos..."
             unzip -q -o "$TARGET"
-            log_step "Instalando dependências..."
-            npm install $NPM_FLAG >/dev/null 2>&1
-            log_succ "Estado de segurança recuperado."
+            if [ $? -eq 0 ]; then
+              log_step "Instalando dependências..."
+              npm install $NPM_FLAG >/dev/null 2>&1
+              log_succ "Backup restaurado com sucesso."
+            else
+              log_err "Falha ao restaurar."
+            fi
             sleep 2
           fi
         else
@@ -243,19 +259,19 @@ manage_backups() {
         fi
         ;;
       [eE])
-        printf "\n${SPACES}${YELLOW}Número para excluir: ${NOCOLOR}"
+        printf "\n${SPACES}${YELLOW}Número do backup: ${NOCOLOR}"
         read B_NUM
         if [[ "$B_NUM" =~ ^[0-9]+$ ]] && [ "$B_NUM" -gt 0 ] && [ "$B_NUM" -le "${#bkp_list[@]}" ]; then
           rm -f "${bkp_list[$((B_NUM-1))]}"
-          log_succ "Backup eliminado."; sleep 1
+          log_succ "Backup excluído."; sleep 1
         fi
         ;;
       [lL])
-        printf "\n${SPACES}${RED}Apagar TODOS os backups definitivamente? [s/N]: ${NOCOLOR}"
+        printf "\n${SPACES}${RED}Apagar todos os backups? [s/N]: ${NOCOLOR}"
         read CONFIRM
         if [[ "$CONFIRM" =~ ^[sS]$ ]]; then
           rm -rf backups/*.zip
-          log_succ "Storage de segurança formatado."; sleep 1
+          log_succ "Todos os backups foram apagados."; sleep 1
         fi
         ;;
       0) return ;;
@@ -270,15 +286,33 @@ start_bot() {
   show_banner
   
   if [ ! -f "launcher.js" ]; then
-     log_err "launcher.js ausente. Formate ou restaure um backup."
-     printf "\n${SPACES}Pressione ENTER."
-     read -r
-     return
+     log_err "O arquivo launcher.js não foi encontrado."
+     printf "\n${SPACES}${YELLOW}Deseja instalar o bot agora? [S/n]: ${NOCOLOR}"
+     read DO_INSTALL
+     if [[ -z "$DO_INSTALL" ]] || [[ "$DO_INSTALL" =~ ^[sS]$ ]]; then
+       create_backup
+       clean_workspace
+       bootstrap_updater
+       log_step "Baixando arquivos do sistema..."
+       node scripts/updater.mjs reinstall
+       if [ $? -eq 0 ]; then
+         log_step "Instalando módulos..."
+         npm install $NPM_FLAG >/dev/null 2>&1
+         log_succ "Instalação concluída!"
+       else
+         log_err "A instalação falhou. Abortando inicialização."
+         printf "\n${SPACES}Pressione ENTER para voltar."
+         read -r
+         return
+       fi
+     else
+       return
+     fi
   fi
     
   while :; do
     if [ "$1" = "--code" ]; then node launcher.js --code; else node launcher.js; fi
-    log_warn "O processo sofreu interrupção. Relançando em 2 segundos..."
+    log_warn "O processo foi interrompido. Reiniciando em 2 segundos..."
     sleep 2
   done
 }
@@ -286,25 +320,22 @@ start_bot() {
 show_menu() {
   while :; do
     show_banner
-    printf "${SPACES}${CYAN}╭───────────────────────────────────────────────────────────────╮${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${WHITE} [ 1 ] 🟢 Iniciar: Modo QR Code                                ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${GRAY}       Inicia o bot e exibe o código no terminal.              ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${WHITE} [ 2 ] 🔵 Iniciar: Modo Pairing Code                           ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${GRAY}       Inicia o bot solicitando o código no WhatsApp.          ${CYAN}│${NOCOLOR}\n"
     printf "${SPACES}${CYAN}├───────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${WHITE} [ 3 ] 🔄 Forçar Instalação da Última Versão                   ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${GRAY}       Limpa o diretório e baixa o release oficial mais novo.  ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${WHITE} [ 4 ] 📜 Explorar e Instalar Versões Anteriores               ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${GRAY}       Lista o histórico do GitHub para downgrade/upgrade.     ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${WHITE} [ 5 ] 📦 Gerenciar Backups do Sistema                         ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${GRAY}       Listar, restaurar ou excluir snapshots de segurança.    ${CYAN}│${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}│${GREEN} [ 1 ]${WHITE} Iniciar Bot por QR Code                                 ${CYAN}│${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}│${GREEN} [ 2 ]${WHITE} Iniciar Bot por Código (Pairing)                        ${CYAN}│${NOCOLOR}\n"
     printf "${SPACES}${CYAN}├───────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${WHITE} [ 6 ] 🧹 Manutenção: Reinstalar Dependências (NPM)            ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${GRAY}       Apaga cache de módulos e realiza nova instalação.       ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${WHITE} [ 7 ] 🗑️  Segurança: Desconectar WhatsApp                       ${CYAN}│${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${GRAY}       Exclui chaves do SQLite exigindo novo login.            ${CYAN}│${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}│${YELLOW} [ 3 ]${WHITE} Instalar Bot (Baixar Arquivos)                          ${CYAN}│${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}│${YELLOW} [ 4 ]${WHITE} Verificar Atualizações Manualmente                      ${CYAN}│${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}│${YELLOW} [ 5 ]${WHITE} Explorar e Instalar Versões Anteriores                  ${CYAN}│${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}│${YELLOW} [ 6 ]${WHITE} Gerenciar Backups do Sistema                            ${CYAN}│${NOCOLOR}\n"
     printf "${SPACES}${CYAN}├───────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
-    printf "${SPACES}${CYAN}│${WHITE} [ 0 ] ❌ Sair da Interface                                    ${CYAN}│${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}│${BLUE} [ 7 ]${WHITE} Instalar Apenas Módulos (npm install)                   ${CYAN}│${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}│${BLUE} [ 8 ]${WHITE} Apagar Apenas node_modules e package-lock               ${CYAN}│${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}├───────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}│${RED} [ 9 ]${WHITE} Limpar Sessões SQLite (Preserva Credenciais)            ${CYAN}│${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}│${RED} [ 10]${WHITE} Apagar Sessão Completa (Requer novo Login)              ${CYAN}│${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}├───────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}│${RED} [ 0 ]${WHITE} Sair do Script                                          ${CYAN}│${NOCOLOR}\n"
     printf "${SPACES}${CYAN}╰───────────────────────────────────────────────────────────────╯${NOCOLOR}\n\n"
     
     printf "${SPACES}${YELLOW}  ➭ Opção: ${NOCOLOR}"
@@ -316,48 +347,72 @@ show_menu() {
       3) 
         detect_env
         printf "\n"
-        log_warn "Isso fará uma limpeza completa dos arquivos locais."
+        log_warn "Os arquivos locais serão substituídos."
         printf "${SPACES}${YELLOW}Confirmar Instalação Limpa? [s/N]: ${NOCOLOR}"
         read CONFIRM_DL
         if [[ "$CONFIRM_DL" =~ ^[sS]$ ]]; then
           create_backup
           clean_workspace
           bootstrap_updater
-          log_step "Baixando sistema base..."
-          node scripts/updater.js reinstall
-          log_step "Instalando Módulos..."
-          npm install $NPM_FLAG >/dev/null 2>&1
-          log_succ "Instalação Concluída!"
+          log_step "Baixando arquivos do sistema..."
+          node scripts/updater.mjs reinstall
+          if [ $? -eq 0 ]; then
+            log_step "Instalando módulos..."
+            npm install $NPM_FLAG >/dev/null 2>&1
+            log_succ "Instalação concluída!"
+          else
+            log_err "A instalação falhou."
+          fi
         fi
-        printf "\n${SPACES}Pressione ENTER."
+        printf "\n${SPACES}Pressione ENTER para voltar."
         read -r
         ;;
-      4) explore_versions ;;
-      5) manage_backups ;;
-      6)
+      4) 
         printf "\n"
-        log_step "Apagando node_modules e travas..."
-        rm -rf node_modules package-lock.json
-        log_step "Instalando dependências..."
-        npm install $NPM_FLAG
-        log_succ "Restaurado."
-        printf "\n${SPACES}Pressione ENTER."
+        check_updates
+        printf "\n${SPACES}Pressione ENTER para voltar."
         read -r
         ;;
+      5) explore_versions ;;
+      6) manage_backups ;;
       7)
         printf "\n"
+        log_step "Instalando dependências..."
+        npm install $NPM_FLAG
+        log_succ "Concluído!"
+        printf "\n${SPACES}Pressione ENTER para voltar."
+        read -r
+        ;;
+      8)
+        printf "\n"
+        log_step "Apagando diretório de módulos..."
+        rm -rf node_modules package-lock.json
+        log_succ "Concluído!"
+        printf "\n${SPACES}Pressione ENTER para voltar."
+        read -r
+        ;;
+      9)
+        printf "\n"
         if [ ! -f "$DB_PATH" ]; then
-           log_err "Database não encontrada."
+           log_err "Banco de dados não encontrado."
         else
-           log_step "Limpando chaves de autenticação..."
+           log_step "Limpando chaves e histórico de conexão..."
            node -e "import('./src/configs/database.js').then(m => m.dbRun('DELETE FROM auth_keys')).catch(() => process.exit(1));"
-           log_succ "Desconectado!"
+           if [ $? -eq 0 ]; then log_succ "Limpeza concluída! Você continua logado."; else log_err "Falha na limpeza."; fi
         fi
-        printf "\n${SPACES}Pressione ENTER."
+        printf "\n${SPACES}Pressione ENTER para voltar."
+        read -r
+        ;;
+      10)
+        printf "\n"
+        log_step "Apagando banco de dados inteiro..."
+        rm -f "$DB_PATH" "${DB_PATH}-wal" "${DB_PATH}-shm"
+        log_succ "Sessão apagada com sucesso!"
+        printf "\n${SPACES}Pressione ENTER para voltar."
         read -r
         ;;
       0) printf "\n${SPACES}${GREEN}Finalizando operações...${NOCOLOR}\n"; exit 0 ;;
-      *) log_err "Invalido."; sleep 1 ;;
+      *) log_err "Opção inválida."; sleep 1 ;;
     esac
   done
 }

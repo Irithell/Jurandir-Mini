@@ -43,6 +43,9 @@ function fetchJson(url) {
   return new Promise((resolve, reject) => {
     https
       .get(url, { headers: { 'User-Agent': 'Jurandir' } }, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          return fetchJson(res.headers.location).then(resolve).catch(reject);
+        }
         if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
         let data = '';
         res.on('data', (c) => (data += c));
@@ -60,17 +63,23 @@ function fetchJson(url) {
 
 function downloadZip(url, dest) {
   return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
     https
       .get(url, { headers: { 'User-Agent': 'Jurandir' } }, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          return downloadZip(res.headers.location, dest).then(resolve).catch(reject);
+        }
         if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
+        const file = fs.createWriteStream(dest);
         res.pipe(file);
         file.on('finish', () => {
           file.close();
           resolve();
         });
       })
-      .on('error', (err) => fs.unlink(dest, () => reject(err)));
+      .on('error', (err) => {
+        if (fs.existsSync(dest)) fs.unlinkSync(dest);
+        reject(err);
+      });
   });
 }
 
@@ -134,7 +143,7 @@ async function performUpdate(forceAll = false, isReinstall = false) {
 
     logStep('Aplicando alterações seguras...');
     let deletedCount = 0;
-    const PROTECTED_FILES = ['start.sh', 'scripts/updater.js'];
+    const PROTECTED_FILES = ['start.sh', 'scripts/updater.mjs'];
 
     const targetList = isReinstall
       ? Object.keys(localManifest.files)
