@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "build_time": 1783462448238,
+  "build_time": 1783462801378,
   "files": {
     ".editorconfig": "999c374e129517658aa4fd08a4879fefc20df9717d792153a460ae36afe4904f",
     ".prettierrc": "af43a3ad42a61ed745fc18d44faf9fceec0ee155a4e128487be4ac7569c986de",
@@ -12,7 +12,7 @@
     "jsconfig.json": "b8b9bcf8e082ccf3d51101a764ab8044085b069b485350557f051e83611a8e7c",
     "launcher.js": "8e62ee968f36b305ca560c7c48817f5bc81c6a772fafdb311dc2e02cf1151b4b",
     "package.json": "31b8dcdba2c36e56ec84106a4829de1c9668a4f775bf85d88c1e308e7fbd24d8",
-    "scripts/updater.mjs": "7594e838ad2a5ea154ddf6d8c7e0bec455859285708ceef3280c4d19eff08512",
+    "scripts/updater.mjs": "84cf593ee2db59c2fd1158a406ce1cc3f0b4a61b8c33c5470086ce7628d535c4",
     "src/client/auth.js": "664a9c62ee09fc076a46ff3e3e0759eabefa790b7e344801425b8ad1d55bff90",
     "src/client/client.js": "45e3fd73317126599aafdf5fe1dbd2b11e83f372dad7262be1f99e0e7cf07992",
     "src/commands/addons/addon.js": "0cc1c961e383178f1cc2a5dcf51ea76fa5d506b1769a01a2e5ec86fffa91ec7b",

@@ -3,6 +3,7 @@ import path from 'node:path';
 import https from 'node:https';
 import crypto from 'node:crypto';
 import { execSync } from 'node:child_process';
+import readline from 'node:readline';
 
 const ROOT_DIR = process.cwd();
 const RAW_MANIFEST_URL =
@@ -11,11 +12,14 @@ const ZIP_URL =
   'https://github.com/Irithell/Jurandir-Mini/releases/latest/download/jurandir-mini.zip';
 
 const TMP_DIR = path.join(ROOT_DIR, '.tmp_update');
-const EXTRACTED_DIR = path.join(TMP_DIR, 'Jurandir-Mini-main');
+const EXTRACTED_DIR = TMP_DIR;
 
 const args = process.argv.slice(2);
 const action = args[0] || 'check';
 
+function logInfo(msg) {
+  console.log(`\x1b[36m[ i ]\x1b[0m ${msg}`);
+}
 function logStep(msg) {
   console.log(`\x1b[36m[ ⚙ ]\x1b[0m ${msg}`);
 }
@@ -28,15 +32,18 @@ function logWarn(msg) {
 function logError(msg) {
   console.log(`\x1b[31m[ x ]\x1b[0m ${msg}`);
 }
-function logItem(act, file) {
-  const colors = {
-    BAIXANDO: '\x1b[34m',
-    VALIDANDO: '\x1b[35m',
-    APLICANDO: '\x1b[32m',
-    REMOVENDO: '\x1b[31m',
-    IGNORADO: '\x1b[33m',
-  };
-  console.log(`  ${colors[act] || '\x1b[37m'}[ ${act} ]\x1b[0m ${file}`);
+function logItem(color, icon, file, extra = '') {
+  console.log(`  \x1b[${color}m[ ${icon} ]\x1b[0m ${file} ${extra}`);
+}
+
+function promptConfirm(question) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(`\n\x1b[33m${question} [S/n]: \x1b[0m`, (answer) => {
+      rl.close();
+      resolve(answer.trim() === '' || answer.trim().toLowerCase() === 's');
+    });
+  });
 }
 
 function fetchJson(url) {
@@ -117,19 +124,50 @@ async function performUpdate(forceAll = false, isReinstall = false) {
     cleanTemp();
     fs.mkdirSync(TMP_DIR, { recursive: true });
 
+    console.log(`\n\x1b[36m[ i ] Plano de Atualização (Local vs Remoto):\x1b[0m`);
+    const allFiles = new Set([
+      ...Object.keys(localManifest.files),
+      ...Object.keys(remoteManifest.files),
+    ]);
+    const sortedFiles = Array.from(allFiles).sort();
+
+    for (const file of sortedFiles) {
+      const oldHash = localManifest.files[file];
+      const newHash = remoteManifest.files[file];
+      if (!oldHash && newHash) logItem('32', '+', file, '\x1b[32m(Novo)\x1b[0m');
+      else if (oldHash && !newHash) logItem('31', '-', file, '\x1b[31m(Removido)\x1b[0m');
+      else if (oldHash !== newHash) logItem('33', '~', file, '\x1b[33m(Modificado)\x1b[0m');
+    }
+    console.log('');
+
     const zipDest = path.join(TMP_DIR, 'main.zip');
     logStep('Baixando pacote...');
     await downloadZip(ZIP_URL, zipDest);
 
-    logStep('Extraindo e validando hashes...');
+    logStep('Extraindo pacote ZIP...');
     execSync(`unzip -q -o main.zip`, { cwd: TMP_DIR, stdio: 'ignore' });
 
+    console.log(`\n\x1b[36m[ ⚙ ] Validando integridade dos arquivos (SHA-256)...\x1b[0m`);
     const filesToApply = [];
+    let validationErrors = 0;
+
     for (const [file, expectedHash] of Object.entries(remoteManifest.files)) {
       const extractedFilePath = path.join(EXTRACTED_DIR, file);
-      if (!fs.existsSync(extractedFilePath)) throw new Error(`Arquivo ausente: ${file}`);
-      if (getFileHash(extractedFilePath) !== expectedHash)
-        throw new Error(`Integridade comprometida: ${file}`);
+
+      if (!fs.existsSync(extractedFilePath)) {
+        logItem('31', 'FALHA', file, '\x1b[31m(Arquivo ausente no ZIP)\x1b[0m');
+        validationErrors++;
+        continue;
+      }
+
+      const actualHash = getFileHash(extractedFilePath);
+      if (actualHash !== expectedHash) {
+        logItem('31', 'FALHA', file, '\x1b[31m(Hash Incompatível)\x1b[0m');
+        validationErrors++;
+        continue;
+      }
+
+      logItem('32', 'OK', file);
 
       if (
         forceAll ||
@@ -141,7 +179,24 @@ async function performUpdate(forceAll = false, isReinstall = false) {
       }
     }
 
-    logStep('Aplicando alterações seguras...');
+    if (validationErrors > 0) {
+      throw new Error(
+        `Validação falhou em ${validationErrors} arquivo(s). Operação abortada por segurança.`
+      );
+    }
+
+    const confirm = await promptConfirm(
+      'Deseja prosseguir e aplicar estas alterações no sistema local?'
+    );
+    if (!confirm) {
+      cleanTemp();
+      console.log('');
+      logWarn('Operação cancelada pelo usuário.');
+      process.exit(1);
+    }
+
+    console.log('');
+    logStep('Aplicando alterações no sistema...');
     let deletedCount = 0;
     const PROTECTED_FILES = ['start.sh', 'scripts/updater.mjs'];
 
@@ -154,7 +209,7 @@ async function performUpdate(forceAll = false, isReinstall = false) {
       const filePath = path.join(ROOT_DIR, file);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
-        logItem('REMOVENDO', file);
+        logItem('31', 'REMOVIDO', file);
         deletedCount++;
       }
     }
@@ -165,7 +220,7 @@ async function performUpdate(forceAll = false, isReinstall = false) {
       const destPath = path.join(ROOT_DIR, file);
       fs.mkdirSync(path.dirname(destPath), { recursive: true });
       fs.copyFileSync(srcPath, destPath);
-      logItem('APLICANDO', file);
+      logItem('32', 'APLICADO', file);
       appliedCount++;
     }
 
@@ -173,8 +228,8 @@ async function performUpdate(forceAll = false, isReinstall = false) {
     cleanTemp();
 
     console.log('');
-    logSuccess('Atualização concluída!');
-    logWarn(`Aplicados: ${appliedCount} | Removidos: ${deletedCount}`);
+    logSuccess('Atualização concluída com sucesso!');
+    logWarn(`Arquivos aplicados: ${appliedCount} | Removidos: ${deletedCount}`);
     process.exit(0);
   } catch (error) {
     cleanTemp();
