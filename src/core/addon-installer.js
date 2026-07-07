@@ -7,7 +7,7 @@ import { ConsoleLogger } from '../utils/logger.js';
 
 /** @typedef {import('@/types/addons.d.ts').AddonRow} AddonRow */
 
-const BASE_RAW = 'https://raw.githubusercontent.com/Irithell/jurandir-addons/main';
+const BASE_RAW = 'https://raw.githubusercontent.com/Irithell/Jurandir-Mini-Addons/main';
 const TMP_DIR = join(process.cwd(), 'database/addons/.tmp');
 
 /** @type {boolean} */
