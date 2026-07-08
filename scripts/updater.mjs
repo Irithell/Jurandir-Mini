@@ -8,8 +8,8 @@ import readline from 'node:readline';
 const ROOT_DIR = process.cwd();
 const RAW_MANIFEST_URL =
   'https://raw.githubusercontent.com/Irithell/Jurandir-Mini/main/manifest.json';
-const ZIP_URL =
-  'https://github.com/Irithell/Jurandir-Mini/releases/latest/download/jurandir-mini.zip';
+const TAR_URL =
+  'https://github.com/Irithell/Jurandir-Mini/releases/latest/download/jurandir-mini.tar.gz';
 
 const TMP_DIR = path.join(ROOT_DIR, '.tmp_update');
 const EXTRACTED_DIR = TMP_DIR;
@@ -68,12 +68,12 @@ function fetchJson(url) {
   });
 }
 
-function downloadZip(url, dest) {
+function downloadTar(url, dest) {
   return new Promise((resolve, reject) => {
     https
       .get(url, { headers: { 'User-Agent': 'Jurandir' } }, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          return downloadZip(res.headers.location, dest).then(resolve).catch(reject);
+          return downloadTar(res.headers.location, dest).then(resolve).catch(reject);
         }
         if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
         const file = fs.createWriteStream(dest);
@@ -140,12 +140,12 @@ async function performUpdate(forceAll = false, isReinstall = false) {
     }
     console.log('');
 
-    const zipDest = path.join(TMP_DIR, 'main.zip');
+    const tarDest = path.join(TMP_DIR, 'main.tar.gz');
     logStep('Baixando pacote...');
-    await downloadZip(ZIP_URL, zipDest);
+    await downloadTar(TAR_URL, tarDest);
 
-    logStep('Extraindo pacote ZIP...');
-    execSync(`unzip -q -o main.zip`, { cwd: TMP_DIR, stdio: 'ignore' });
+    logStep('Extraindo pacote...');
+    execSync(`tar -xzf main.tar.gz`, { cwd: TMP_DIR, stdio: 'ignore' });
 
     console.log(`\n\x1b[36m[ ⚙ ] Validando integridade dos arquivos (SHA-256)...\x1b[0m`);
     const filesToApply = [];
@@ -155,7 +155,7 @@ async function performUpdate(forceAll = false, isReinstall = false) {
       const extractedFilePath = path.join(EXTRACTED_DIR, file);
 
       if (!fs.existsSync(extractedFilePath)) {
-        logItem('31', 'FALHA', file, '\x1b[31m(Arquivo ausente no ZIP)\x1b[0m');
+        logItem('31', 'FALHA', file, '\x1b[31m(Arquivo ausente)\x1b[0m');
         validationErrors++;
         continue;
       }

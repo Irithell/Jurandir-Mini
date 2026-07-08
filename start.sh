@@ -44,22 +44,63 @@ show_banner() {
   printf "${SPACES}${CYAN}╰───────────────────────────────────────────────────────────────╯${NOCOLOR}\n"
 }
 
-detect_env() {
-  if ! command -v node >/dev/null 2>&1; then log_err "Node.js ausente!"; exit 1; fi
-  if ! command -v curl >/dev/null 2>&1; then log_err "curl ausente!"; exit 1; fi
-  if ! command -v zip >/dev/null 2>&1; then log_err "zip/unzip ausentes!"; exit 1; fi
+check_dependencies() {
+  log_step "Verificando dependências do sistema..."
+  MISSING=""
+  
+  for pkg in node curl tar git ffmpeg; do
+    if command -v $pkg >/dev/null 2>&1; then
+      printf "${SPACES}${GREEN}[ ✓ ]${NOCOLOR} ${WHITE}${pkg}${NOCOLOR}\n"
+    else
+      printf "${SPACES}${RED}[ x ]${NOCOLOR} ${GRAY}${pkg} (ausente)${NOCOLOR}\n"
+      MISSING="$MISSING $pkg"
+    fi
+  done
+
+  if [ -n "$MISSING" ]; then
+    if [ -n "$NPM_FLAG" ]; then
+      printf "\n${SPACES}${YELLOW}Deseja instalar as ferramentas ausentes agora? [S/n]: ${NOCOLOR}"
+      read DO_INSTALL
+      case "$DO_INSTALL" in
+        [sS]|"")
+          log_step "Instalando via gerenciador de pacotes do Termux..."
+          pkg install -y $MISSING
+          log_succ "Instalação concluída!"
+          ;;
+        *)
+          log_warn "O bot pode não funcionar corretamente."
+          sleep 2
+          ;;
+      esac
+    else
+      printf "\n${SPACES}${RED}Ferramentas ausentes detectadas. Instale-as manualmente via apt/pacman/yum.${NOCOLOR}\n"
+      sleep 2
+    fi
+  fi
+}
+
+get_pkg_hash() {
+  node --input-type=module -e "
+    import fs from 'fs';
+    import crypto from 'crypto';
+    try {
+      console.log(crypto.createHash('md5').update(fs.readFileSync('package.json')).digest('hex'));
+    } catch(e) {}
+  "
 }
 
 create_backup() {
   printf "\n${SPACES}${YELLOW}Deseja criar um backup de segurança? [S/n]: ${NOCOLOR}"
   read DO_BACKUP
-  if [[ -z "$DO_BACKUP" ]] || [[ "$DO_BACKUP" =~ ^[sS]$ ]]; then
-    log_step "Criando backup do sistema..."
-    mkdir -p backups
-    BKP_FILE="backups/bkp_$(date +%Y%m%d_%H%M%S).zip"
-    zip -q -r "$BKP_FILE" . -x "node_modules/*" -x "backups/*"
-    log_succ "Backup salvo: $BKP_FILE"
-  fi
+  case "$DO_BACKUP" in
+    [sS]|"")
+      log_step "Criando backup do sistema..."
+      mkdir -p backups
+      BKP_FILE="backups/bkp_$(date +%Y%m%d_%H%M%S).tar.gz"
+      tar -czf "$BKP_FILE" --exclude="node_modules" --exclude="backups" .
+      log_succ "Backup salvo: $BKP_FILE"
+      ;;
+  esac
 }
 
 clean_workspace() {
@@ -108,7 +149,7 @@ bootstrap_updater() {
 }
 
 check_updates() {
-  detect_env
+  check_dependencies
   bootstrap_updater
   
   curl -sL "$LATEST_URL/manifest.json" -o .remote_manifest.json 2>/dev/null
@@ -136,20 +177,32 @@ check_updates() {
         
         printf "\n${SPACES}${CYAN}Deseja instalar a atualização agora? [S/n]: ${NOCOLOR}"
         read DO_UPDATE
-        if [[ -z "$DO_UPDATE" ]] || [[ "$DO_UPDATE" =~ ^[sS]$ ]]; then
-          printf "\n"
-          create_backup
-          node scripts/updater.mjs update
-          if [ $? -eq 0 ]; then
-            chmod +x *.sh 2>/dev/null
-            log_step "Instalando dependências..."
-            npm install $NPM_FLAG >/dev/null 2>&1
-            log_succ "Atualizado para v${REMOTE_VER}!"
-          else
-            log_err "Falha na atualização."
-          fi
-          sleep 2
-        fi
+        case "$DO_UPDATE" in
+          [sS]|"")
+            printf "\n"
+            create_backup
+            
+            PKG_OLD=$(get_pkg_hash)
+            node scripts/updater.mjs update
+            
+            if [ $? -eq 0 ]; then
+              chmod +x *.sh 2>/dev/null
+              PKG_NEW=$(get_pkg_hash)
+              
+              if [ "$PKG_OLD" != "$PKG_NEW" ] || [ ! -d "node_modules" ]; then
+                log_step "Alteração estrutural detectada nas dependências."
+                log_step "Eliminando cache de pacotes antigos..."
+                rm -rf node_modules package-lock.json
+                log_step "Instalando dependências (npm)..."
+                npm install $NPM_FLAG >/dev/null 2>&1
+              fi
+              log_succ "Atualizado para v${REMOTE_VER}!"
+            else
+              log_err "Falha na atualização."
+            fi
+            sleep 2
+            ;;
+        esac
       else
         log_succ "O sistema já está na versão mais recente (v${LOCAL_VER})."
       fi
@@ -163,7 +216,7 @@ check_updates() {
 
 explore_versions() {
   show_banner
-  detect_env
+  check_dependencies
   log_step "Consultando repositório remoto..."
   
   node --input-type=module -e "
@@ -191,35 +244,42 @@ explore_versions() {
   printf "\n${SPACES}${CYAN}Digite o NÚMERO da versão (ou deixe vazio para cancelar): ${NOCOLOR}"
   read V_INDEX
 
-  if [[ "$V_INDEX" =~ ^[0-9]+$ ]]; then
-    TARGET_TAG=$(node --input-type=module -e "import fs from 'fs'; try { console.log(JSON.parse(fs.readFileSync('.rel_tmp.json'))[$V_INDEX].tag_name) } catch(e) {}")
-    if [ -n "$TARGET_TAG" ]; then
-      printf "\n${SPACES}${RED}ATENÇÃO: Os arquivos atuais serão substituídos.${NOCOLOR}\n"
-      printf "${SPACES}${YELLOW}Confirmar instalação da versão ${TARGET_TAG}? [s/N]: ${NOCOLOR}"
-      read CONFIRM_DL
-      if [[ "$CONFIRM_DL" =~ ^[sS]$ ]]; then
-        create_backup
-        clean_workspace
-        log_step "Baixando release oficial..."
-        curl -L -# "https://github.com/$REPO/releases/download/$TARGET_TAG/jurandir-mini.zip" -o pacote.zip
-        unzip -q -o pacote.zip
-        if [ $? -eq 0 ]; then
-          rm pacote.zip
-          chmod +x *.sh 2>/dev/null
-          log_step "Instalando dependências..."
-          npm install $NPM_FLAG >/dev/null 2>&1
-          log_succ "Versão $TARGET_TAG instalada."
-        else
-          log_err "Falha ao extrair pacote."
-        fi
+  case "$V_INDEX" in
+    ""|*[!0-9]*)
+      log_err "Índice não informado ou inválido."
+      ;;
+    *)
+      TARGET_TAG=$(node --input-type=module -e "import fs from 'fs'; try { console.log(JSON.parse(fs.readFileSync('.rel_tmp.json'))[$V_INDEX].tag_name) } catch(e) {}")
+      if [ -n "$TARGET_TAG" ]; then
+        printf "\n${SPACES}${RED}ATENÇÃO: Os arquivos atuais serão substituídos.${NOCOLOR}\n"
+        printf "${SPACES}${YELLOW}Confirmar instalação da versão ${TARGET_TAG}? [s/N]: ${NOCOLOR}"
+        read CONFIRM_DL
+        case "$CONFIRM_DL" in
+          [sS]|"")
+            create_backup
+            clean_workspace
+            log_step "Baixando release oficial..."
+            curl -L -# "https://github.com/$REPO/releases/download/$TARGET_TAG/jurandir-mini.tar.gz" -o pacote.tar.gz
+            tar -xzf pacote.tar.gz
+            if [ $? -eq 0 ]; then
+              rm pacote.tar.gz
+              chmod +x *.sh 2>/dev/null
+              log_step "Instalando dependências..."
+              npm install $NPM_FLAG >/dev/null 2>&1
+              log_succ "Versão $TARGET_TAG instalada."
+            else
+              log_err "Falha ao extrair pacote."
+            fi
+            ;;
+        esac
+      else
+        log_err "Índice inválido."
       fi
-    else
-      log_err "Índice inválido."
-    fi
-  fi
+      ;;
+  esac
   rm -f .rel_tmp.json
   printf "\n${SPACES}Pressione ENTER para voltar."
-  read -r
+  read JUNK
 }
 
 manage_backups() {
@@ -227,67 +287,98 @@ manage_backups() {
     show_banner
     printf "${SPACES}${YELLOW}=== GERENCIADOR DE BACKUPS ===${NOCOLOR}\n\n"
     
-    if [ ! -d "backups" ] || [ -z "$(ls -A backups 2>/dev/null)" ]; then
+    if [ ! -d "backups" ] || [ -z "$(ls backups/*.tar.gz 2>/dev/null)" ]; then
       log_warn "Nenhum backup localizado."
       printf "\n${SPACES}Pressione ENTER para voltar."
-      read -r
+      read JUNK
       return
     fi
 
-    local i=1
-    local bkp_list=()
-    for b in backups/*.zip; do
-      bkp_list+=("$b")
+    i=1
+    for b in backups/*.tar.gz; do
+      [ -e "$b" ] || continue
       printf "${SPACES}${CYAN}[ %d ]${NOCOLOR} ${WHITE}%s${NOCOLOR} ${GRAY}(%s)${NOCOLOR}\n" "$i" "$(basename "$b")" "$(du -h "$b" | cut -f1)"
       i=$((i + 1))
     done
+    TOTAL=$((i - 1))
 
     printf "\n${SPACES}${CYAN}[R] Restaurar  [E] Excluir Único  [L] Limpar Tudo  [0] Voltar${NOCOLOR}\n"
     printf "${SPACES}${YELLOW}➭ Escolha: ${NOCOLOR}"
     read B_OPT
 
-    case $B_OPT in
+    case "$B_OPT" in
       [rR])
         printf "\n${SPACES}${YELLOW}Número do backup: ${NOCOLOR}"
         read B_NUM
-        if [[ "$B_NUM" =~ ^[0-9]+$ ]] && [ "$B_NUM" -gt 0 ] && [ "$B_NUM" -le "${#bkp_list[@]}" ]; then
-          TARGET="${bkp_list[$((B_NUM-1))]}"
-          printf "\n${SPACES}${RED}A restauração substituirá os arquivos atuais.${NOCOLOR}\n"
-          printf "${SPACES}${YELLOW}Confirmar aplicação de $(basename "$TARGET")? [s/N]: ${NOCOLOR}"
-          read CONFIRM
-          if [[ "$CONFIRM" =~ ^[sS]$ ]]; then
-            clean_workspace
-            log_step "Descompactando arquivos..."
-            unzip -q -o "$TARGET"
-            if [ $? -eq 0 ]; then
-              chmod +x *.sh 2>/dev/null
-              log_step "Instalando dependências..."
-              npm install $NPM_FLAG >/dev/null 2>&1
-              log_succ "Backup restaurado com sucesso."
+        case "$B_NUM" in
+          ""|*[!0-9]*) log_err "Valor incorreto."; sleep 1 ;;
+          *)
+            if [ "$B_NUM" -gt 0 ] && [ "$B_NUM" -le "$TOTAL" ]; then
+              curr=1
+              TARGET=""
+              for b in backups/*.tar.gz; do
+                if [ "$curr" -eq "$B_NUM" ]; then TARGET="$b"; break; fi
+                curr=$((curr + 1))
+              done
+              
+              printf "\n${SPACES}${RED}A restauração substituirá os arquivos atuais.${NOCOLOR}\n"
+              printf "${SPACES}${YELLOW}Confirmar aplicação de $(basename "$TARGET")? [s/N]: ${NOCOLOR}"
+              read CONFIRM
+              case "$CONFIRM" in
+                [sS]|"")
+                  clean_workspace
+                  log_step "Descompactando arquivos..."
+                  tar -xzf "$TARGET"
+                  if [ $? -eq 0 ]; then
+                    chmod +x *.sh 2>/dev/null
+                    log_step "Instalando dependências..."
+                    npm install $NPM_FLAG >/dev/null 2>&1
+                    log_succ "Backup restaurado com sucesso."
+                  else
+                    log_err "Falha ao restaurar."
+                  fi
+                  sleep 2
+                  ;;
+              esac
             else
-              log_err "Falha ao restaurar."
+              log_err "Valor incorreto."; sleep 1
             fi
-            sleep 2
-          fi
-        else
-          log_err "Valor incorreto."; sleep 1
-        fi
+            ;;
+        esac
         ;;
       [eE])
         printf "\n${SPACES}${YELLOW}Número do backup: ${NOCOLOR}"
         read B_NUM
-        if [[ "$B_NUM" =~ ^[0-9]+$ ]] && [ "$B_NUM" -gt 0 ] && [ "$B_NUM" -le "${#bkp_list[@]}" ]; then
-          rm -f "${bkp_list[$((B_NUM-1))]}"
-          log_succ "Backup excluído."; sleep 1
-        fi
+        case "$B_NUM" in
+          ""|*[!0-9]*) log_err "Valor incorreto."; sleep 1 ;;
+          *)
+            if [ "$B_NUM" -gt 0 ] && [ "$B_NUM" -le "$TOTAL" ]; then
+              curr=1
+              for b in backups/*.tar.gz; do
+                if [ "$curr" -eq "$B_NUM" ]; then
+                  rm -f "$b"
+                  log_succ "Backup excluído."
+                  sleep 1
+                  break
+                fi
+                curr=$((curr + 1))
+              done
+            else
+              log_err "Valor incorreto."; sleep 1
+            fi
+            ;;
+        esac
         ;;
       [lL])
         printf "\n${SPACES}${RED}Apagar todos os backups? [s/N]: ${NOCOLOR}"
         read CONFIRM
-        if [[ "$CONFIRM" =~ ^[sS]$ ]]; then
-          rm -rf backups/*.zip
-          log_succ "Todos os backups foram apagados."; sleep 1
-        fi
+        case "$CONFIRM" in
+          [sS]|"")
+            rm -rf backups/*.tar.gz
+            log_succ "Todos os backups foram apagados."
+            sleep 1
+            ;;
+        esac
         ;;
       0) return ;;
       *) log_err "Opção inválida."; sleep 1 ;;
@@ -304,32 +395,35 @@ start_bot() {
      log_err "O arquivo launcher.js não foi encontrado."
      printf "\n${SPACES}${YELLOW}Deseja instalar o bot agora? [S/n]: ${NOCOLOR}"
      read DO_INSTALL
-     if [[ -z "$DO_INSTALL" ]] || [[ "$DO_INSTALL" =~ ^[sS]$ ]]; then
-       create_backup
-       clean_workspace
-       bootstrap_updater
-       log_step "Baixando arquivos do sistema..."
-       node scripts/updater.mjs reinstall
-       if [ $? -eq 0 ]; then
-         chmod +x *.sh 2>/dev/null
-         log_step "Instalando módulos..."
-         npm install $NPM_FLAG >/dev/null 2>&1
-         log_succ "Instalação concluída!"
-       else
-         log_err "A instalação falhou. Abortando inicialização."
-         printf "\n${SPACES}Pressione ENTER para voltar."
-         read -r
+     case "$DO_INSTALL" in
+       [sS]|"")
+         create_backup
+         clean_workspace
+         bootstrap_updater
+         log_step "Baixando arquivos do sistema..."
+         node scripts/updater.mjs reinstall
+         if [ $? -eq 0 ]; then
+           chmod +x *.sh 2>/dev/null
+           log_step "Instalando módulos..."
+           npm install $NPM_FLAG >/dev/null 2>&1
+           log_succ "Instalação concluída!"
+         else
+           log_err "A instalação falhou. Abortando inicialização."
+           printf "\n${SPACES}Pressione ENTER para voltar."
+           read JUNK
+           return
+         fi
+         ;;
+       *)
          return
-       fi
-     else
-       return
-     fi
+         ;;
+     esac
   fi
     
   while :; do
     if [ "$1" = "--code" ]; then node launcher.js --code; else node launcher.js; fi
     EXIT_CODE=$?
-    if [ $EXIT_CODE -eq 0 ]; then
+    if [ "$EXIT_CODE" -eq 0 ]; then
       printf "\n"
       log_succ "Processo encerrado."
       break
@@ -363,38 +457,40 @@ show_menu() {
     printf "${SPACES}${YELLOW}  ➭ Opção: ${NOCOLOR}"
     read OPTION
     
-    case $OPTION in
+    case "$OPTION" in
       1) start_bot ;;
       2) start_bot "--code" ;;
       3) 
-        detect_env
+        check_dependencies
         printf "\n"
         log_warn "Os arquivos locais serão substituídos."
         printf "${SPACES}${YELLOW}Confirmar Instalação Limpa? [s/N]: ${NOCOLOR}"
         read CONFIRM_DL
-        if [[ "$CONFIRM_DL" =~ ^[sS]$ ]]; then
-          create_backup
-          clean_workspace
-          bootstrap_updater
-          log_step "Baixando arquivos do sistema..."
-          node scripts/updater.mjs reinstall
-          if [ $? -eq 0 ]; then
-            chmod +x *.sh 2>/dev/null
-            log_step "Instalando módulos..."
-            npm install $NPM_FLAG >/dev/null 2>&1
-            log_succ "Instalação concluída!"
-          else
-            log_err "A instalação falhou."
-          fi
-        fi
+        case "$CONFIRM_DL" in
+          [sS]|"")
+            create_backup
+            clean_workspace
+            bootstrap_updater
+            log_step "Baixando arquivos do sistema..."
+            node scripts/updater.mjs reinstall
+            if [ $? -eq 0 ]; then
+              chmod +x *.sh 2>/dev/null
+              log_step "Instalando módulos..."
+              npm install $NPM_FLAG >/dev/null 2>&1
+              log_succ "Instalação concluída!"
+            else
+              log_err "A instalação falhou."
+            fi
+            ;;
+        esac
         printf "\n${SPACES}Pressione ENTER para voltar."
-        read -r
+        read JUNK
         ;;
       4) 
         printf "\n"
         check_updates
         printf "\n${SPACES}Pressione ENTER para voltar."
-        read -r
+        read JUNK
         ;;
       5) explore_versions ;;
       6) manage_backups ;;
@@ -404,7 +500,7 @@ show_menu() {
         npm install $NPM_FLAG
         log_succ "Concluído!"
         printf "\n${SPACES}Pressione ENTER para voltar."
-        read -r
+        read JUNK
         ;;
       8)
         printf "\n"
@@ -412,7 +508,7 @@ show_menu() {
         rm -rf node_modules package-lock.json
         log_succ "Concluído!"
         printf "\n${SPACES}Pressione ENTER para voltar."
-        read -r
+        read JUNK
         ;;
       9)
         printf "\n"
@@ -424,7 +520,7 @@ show_menu() {
            if [ $? -eq 0 ]; then log_succ "Limpeza concluída! Você continua logado."; else log_err "Falha na limpeza."; fi
         fi
         printf "\n${SPACES}Pressione ENTER para voltar."
-        read -r
+        read JUNK
         ;;
       10)
         printf "\n"
@@ -432,7 +528,7 @@ show_menu() {
         rm -f "$DB_PATH" "${DB_PATH}-wal" "${DB_PATH}-shm"
         log_succ "Sessão apagada com sucesso!"
         printf "\n${SPACES}Pressione ENTER para voltar."
-        read -r
+        read JUNK
         ;;
       0) printf "\n${SPACES}${GREEN}Finalizando operações...${NOCOLOR}\n"; exit 0 ;;
       *) log_err "Opção inválida."; sleep 1 ;;
