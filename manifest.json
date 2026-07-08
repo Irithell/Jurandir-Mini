@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "build_time": 1783531399183,
+  "build_time": 1783531795029,
   "files": {
     ".editorconfig": "999c374e129517658aa4fd08a4879fefc20df9717d792153a460ae36afe4904f",
     ".prettierrc": "af43a3ad42a61ed745fc18d44faf9fceec0ee155a4e128487be4ac7569c986de",
@@ -11,7 +11,7 @@
     "eslint.config.js": "376eaf518c316d64010655e2528eae1f39991143b7e784f2dc8c3633c179625f",
     "jsconfig.json": "b8b9bcf8e082ccf3d51101a764ab8044085b069b485350557f051e83611a8e7c",
     "launcher.js": "8e62ee968f36b305ca560c7c48817f5bc81c6a772fafdb311dc2e02cf1151b4b",
-    "package.json": "5eece8c9174b620152e480fa97ef50a74bf932ef5da3ea8673e1ec00756be869",
+    "package.json": "b323ddf8e633a1e1d15cfb264223d578ae2e130f2a2621874b0b58203b43aee7",
     "scripts/updater.mjs": "ec9e687c5b9831cd8192e9dbc60ced7eb2ee3132d5b56a40ec5611faa8ae4cb9",
     "src/client/auth.js": "664a9c62ee09fc076a46ff3e3e0759eabefa790b7e344801425b8ad1d55bff90",
     "src/client/client.js": "5b8202b5f7d6cc10c932b7d67224a8ef1b9cdae41b6be33720fc9d9ad1c83f92",

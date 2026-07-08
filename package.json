@@ -5,8 +5,8 @@
   "type": "module",
   "main": "src/client/client.js",
   "scripts": {
-    "start": "node launcher.js",
-    "start:code": "node launcher.js --code",
+    "start": "sh start.sh --skip --update --code",
+    "start:qr": "sh start.sh --skip --update",
     "dev": "node launcher.js",
     "dev:code": "node launcher.js --code",
     "lint": "eslint \"src/**/*.js\"",
