@@ -46,31 +46,42 @@ show_banner() {
 
 check_dependencies() {
   log_step "Verificando dependências do sistema..."
-  MISSING=""
+  MISSING_CMDS=""
+  MISSING_PKGS=""
   
-  for pkg in node curl tar git ffmpeg; do
-    if command -v $pkg >/dev/null 2>&1; then
-      printf "${SPACES}${GREEN}[ ✓ ]${NOCOLOR} ${WHITE}${pkg}${NOCOLOR}\n"
+  for cmd in node curl tar git ffmpeg; do
+    if command -v $cmd >/dev/null 2>&1; then
+      printf "${SPACES}${GREEN}[ ✓ ]${NOCOLOR} ${WHITE}${cmd}${NOCOLOR}\n"
     else
-      printf "${SPACES}${RED}[ x ]${NOCOLOR} ${GRAY}${pkg} (ausente)${NOCOLOR}\n"
-      MISSING="$MISSING $pkg"
+      printf "${SPACES}${RED}[ x ]${NOCOLOR} ${GRAY}${cmd} (ausente)${NOCOLOR}\n"
+      MISSING_CMDS="$MISSING_CMDS $cmd"
+      if [ "$cmd" = "node" ]; then
+        MISSING_PKGS="$MISSING_PKGS nodejs"
+      else
+        MISSING_PKGS="$MISSING_PKGS $cmd"
+      fi
     fi
   done
 
-  if [ -n "$MISSING" ]; then
+  if [ -n "$MISSING_CMDS" ]; then
     if [ -n "$NPM_FLAG" ]; then
       if [ "$MODE_SKIP" -eq 1 ] || [ "$MODE_UPDATE" -eq 1 ]; then
         DO_INSTALL="S"
       else
-        printf "\n${SPACES}${YELLOW}Deseja instalar as ferramentas ausentes agora? [S/n]: ${NOCOLOR}"
+        printf "\n${SPACES}${YELLOW}Deseja instalar as ferramentas ausentes agora? [ S/n ]: ${NOCOLOR}"
         read DO_INSTALL
       fi
       
       case "$DO_INSTALL" in
         [sS]|"")
           log_step "Instalando via gerenciador de pacotes do Termux..."
-          pkg install -y $MISSING
-          log_succ "Instalação concluída!"
+          pkg install -y $MISSING_PKGS
+          if [ $? -eq 0 ]; then
+            log_succ "Instalação concluída!"
+          else
+            log_err "Falha na instalação dos pacotes. Abortando."
+            exit 1
+          fi
           ;;
         *)
           log_warn "O bot pode não funcionar corretamente."
@@ -128,7 +139,7 @@ create_backup() {
   if [ "$MODE_SKIP" -eq 1 ] || [ "$MODE_UPDATE" -eq 1 ]; then
     DO_BACKUP="S"
   else
-    printf "\n${SPACES}${YELLOW}Deseja criar um backup de segurança? [S/n]: ${NOCOLOR}"
+    printf "\n${SPACES}${YELLOW}Deseja criar um backup de segurança? [ S/n ]: ${NOCOLOR}"
     read DO_BACKUP
   fi
   
@@ -230,7 +241,7 @@ check_updates() {
           DO_UPDATE="S"
           printf "\n${SPACES}${CYAN}Atualização automática acionada (--update)...${NOCOLOR}\n"
         else
-          printf "\n${SPACES}${CYAN}Deseja instalar a atualização agora? [S/n]: ${NOCOLOR}"
+          printf "\n${SPACES}${CYAN}Deseja instalar a atualização agora? [ S/n ]: ${NOCOLOR}"
           read DO_UPDATE
         fi
         
@@ -305,10 +316,10 @@ explore_versions() {
       log_err "Índice não informado ou inválido."
       ;;
     *)
-      TARGET_TAG=$(node --input-type=module -e "import fs from 'fs'; try { console.log(JSON.parse(fs.readFileSync('.rel_tmp.json'))[$V_INDEX].tag_name) } catch(e) {}")
+      TARGET_TAG=$(node --input-type=module -e "import fs from 'fs'; try { console.log(JSON.parse(fs.readFileSync('.rel_tmp.json'))[ $V_INDEX ].tag_name) } catch(e) {}")
       if [ -n "$TARGET_TAG" ]; then
         printf "\n${SPACES}${RED}ATENÇÃO: Os arquivos atuais serão substituídos.${NOCOLOR}\n"
-        printf "${SPACES}${YELLOW}Confirmar instalação da versão ${TARGET_TAG}? [s/N]: ${NOCOLOR}"
+        printf "${SPACES}${YELLOW}Confirmar instalação da versão ${TARGET_TAG}? [ S/n ]: ${NOCOLOR}"
         read CONFIRM_DL
         case "$CONFIRM_DL" in
           [sS]|"")
@@ -361,7 +372,7 @@ manage_backups() {
     done
     TOTAL=$((i - 1))
 
-    printf "\n${SPACES}${CYAN}[R] Restaurar  [E] Excluir Único  [L] Limpar Tudo  [0] Voltar${NOCOLOR}\n"
+    printf "\n${SPACES}${CYAN}[ R ] Restaurar  [ E ] Excluir Único  [ L ] Limpar Tudo  [ 0 ] Voltar${NOCOLOR}\n"
     printf "${SPACES}${YELLOW}➭ Escolha: ${NOCOLOR}"
     read B_OPT
 
@@ -381,7 +392,7 @@ manage_backups() {
               done
               
               printf "\n${SPACES}${RED}A restauração substituirá os arquivos atuais.${NOCOLOR}\n"
-              printf "${SPACES}${YELLOW}Confirmar aplicação de $(basename "$TARGET")? [s/N]: ${NOCOLOR}"
+              printf "${SPACES}${YELLOW}Confirmar aplicação de $(basename "$TARGET")? [ S/n ]: ${NOCOLOR}"
               read CONFIRM
               case "$CONFIRM" in
                 [sS]|"")
@@ -432,7 +443,7 @@ manage_backups() {
         esac
         ;;
       [lL])
-        printf "\n${SPACES}${RED}Apagar todos os backups? [s/N]: ${NOCOLOR}"
+        printf "\n${SPACES}${RED}Apagar todos os backups? [ S/n ]: ${NOCOLOR}"
         read CONFIRM
         case "$CONFIRM" in
           [sS]|"")
@@ -460,7 +471,7 @@ start_bot() {
        DO_INSTALL="S"
        printf "\n${SPACES}${YELLOW}Instalação automática acionada pelas flags...${NOCOLOR}\n"
      else
-       printf "\n${SPACES}${YELLOW}Deseja instalar o bot agora? [S/n]: ${NOCOLOR}"
+       printf "\n${SPACES}${YELLOW}Deseja instalar o bot agora? [ S/n ]: ${NOCOLOR}"
        read DO_INSTALL
      fi
      
@@ -564,7 +575,7 @@ show_menu() {
         check_dependencies
         printf "\n"
         log_warn "Os arquivos locais serão substituídos."
-        printf "${SPACES}${YELLOW}Confirmar Instalação Limpa? [s/N]: ${NOCOLOR}"
+        printf "${SPACES}${YELLOW}Confirmar Instalação Limpa? [ S/n ]: ${NOCOLOR}"
         read CONFIRM_DL
         case "$CONFIRM_DL" in
           [sS]|"")
