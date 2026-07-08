@@ -15,7 +15,7 @@ API_URL="https://api.github.com/repos/$REPO/releases"
 DB_PATH="./database/sessions/jurandir.db"
 SPACES=""
 
-trap 'printf "\n\n${SPACES}${GREEN}[ ✓ ]${NOCOLOR} Sistema encerrado com segurança.\n"; exit 0' INT
+trap 'printf "\n\n${SPACES}${GREEN}[ ✓ ]${NOCOLOR} Sistema encerrado, até logo!\n"; exit 0' INT
 
 NPM_FLAG=""
 if [ -n "$PREFIX" ] && [ "$(echo "$PREFIX" | grep -o 'com.termux')" = "com.termux" ]; then
@@ -98,7 +98,7 @@ bootstrap_updater() {
     
     if [ "$NODE_VALIDATION" = "OK" ]; then
       mv .tmp_manifest.json manifest.json
-      log_succ "Validação autêntica."
+      log_succ "Assinaturas autorizadas."
     else
       rm -f scripts/updater.mjs .tmp_manifest.json
       log_err "Assinatura rejeitada. Arquivo corrompido."
@@ -115,34 +115,44 @@ check_updates() {
   if [ -s .remote_manifest.json ]; then
     REMOTE_VER=$(node --input-type=module -e "import fs from 'fs'; try { console.log(JSON.parse(fs.readFileSync('.remote_manifest.json')).version) } catch(e) {}")
     LOCAL_VER=$(node --input-type=module -e "import fs from 'fs'; try { console.log(JSON.parse(fs.readFileSync('manifest.json')).version) } catch(e) { console.log('0.0.0') }")
+    REMOTE_TIME=$(node --input-type=module -e "import fs from 'fs'; try { console.log(JSON.parse(fs.readFileSync('.remote_manifest.json')).build_time) } catch(e) {}")
+    LOCAL_TIME=$(node --input-type=module -e "import fs from 'fs'; try { console.log(JSON.parse(fs.readFileSync('manifest.json')).build_time) } catch(e) { console.log('0') }")
     rm -f .remote_manifest.json
 
-    if [ "$REMOTE_VER" != "$LOCAL_VER" ] && [ -n "$REMOTE_VER" ]; then
-      printf "\n${SPACES}${YELLOW}╭───────────────────────────────────────────────────────────────╮${NOCOLOR}\n"
-      printf "${SPACES}${YELLOW}│ ATUALIZAÇÃO DISPONÍVEL                                        │${NOCOLOR}\n"
-      printf "${SPACES}${YELLOW}├───────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
-      printf "${SPACES}${YELLOW}│ Versão local: ${WHITE}v${LOCAL_VER}${NOCOLOR}\n"
-      printf "${SPACES}${YELLOW}│ Nova versão:  ${GREEN}v${REMOTE_VER}${NOCOLOR}\n"
-      printf "${SPACES}${YELLOW}╰───────────────────────────────────────────────────────────────╯${NOCOLOR}\n"
-      
-      printf "\n${SPACES}${CYAN}Deseja instalar a atualização agora? [S/n]: ${NOCOLOR}"
-      read DO_UPDATE
-      if [[ -z "$DO_UPDATE" ]] || [[ "$DO_UPDATE" =~ ^[sS]$ ]]; then
-        printf "\n"
-        create_backup
-        node scripts/updater.mjs update
-        if [ $? -eq 0 ]; then
-          chmod +x *.sh 2>/dev/null
-          log_step "Instalando dependências..."
-          npm install $NPM_FLAG >/dev/null 2>&1
-          log_succ "Atualizado para v${REMOTE_VER}!"
-        else
-          log_err "Falha na atualização."
+    if [ -n "$REMOTE_VER" ] && [ -n "$REMOTE_TIME" ]; then
+      if [ "$REMOTE_VER" != "$LOCAL_VER" ] || [ "$REMOTE_TIME" != "$LOCAL_TIME" ]; then
+        
+        DISPLAY_VER="$REMOTE_VER"
+        if [ "$REMOTE_VER" = "$LOCAL_VER" ]; then
+          DISPLAY_VER="${REMOTE_VER} (Hotfix)"
         fi
-        sleep 2
+
+        printf "\n${SPACES}${YELLOW}╭───────────────────────────────────────────────────────────────╮${NOCOLOR}\n"
+        printf "${SPACES}${YELLOW}│ ATUALIZAÇÃO DISPONÍVEL                                        │${NOCOLOR}\n"
+        printf "${SPACES}${YELLOW}├───────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
+        printf "${SPACES}${YELLOW}│ Versão local: ${WHITE}v${LOCAL_VER}${NOCOLOR}\n"
+        printf "${SPACES}${YELLOW}│ Nova versão:  ${GREEN}v${DISPLAY_VER}${NOCOLOR}\n"
+        printf "${SPACES}${YELLOW}╰───────────────────────────────────────────────────────────────╯${NOCOLOR}\n"
+        
+        printf "\n${SPACES}${CYAN}Deseja instalar a atualização agora? [S/n]: ${NOCOLOR}"
+        read DO_UPDATE
+        if [[ -z "$DO_UPDATE" ]] || [[ "$DO_UPDATE" =~ ^[sS]$ ]]; then
+          printf "\n"
+          create_backup
+          node scripts/updater.mjs update
+          if [ $? -eq 0 ]; then
+            chmod +x *.sh 2>/dev/null
+            log_step "Instalando dependências..."
+            npm install $NPM_FLAG >/dev/null 2>&1
+            log_succ "Atualizado para v${REMOTE_VER}!"
+          else
+            log_err "Falha na atualização."
+          fi
+          sleep 2
+        fi
+      else
+        log_succ "O sistema já está na versão mais recente (v${LOCAL_VER})."
       fi
-    elif [ -n "$REMOTE_VER" ]; then
-      log_succ "O sistema já está na versão mais recente (v${LOCAL_VER})."
     else
       log_warn "Falha ao processar os dados da versão."
     fi
@@ -321,10 +331,10 @@ start_bot() {
     EXIT_CODE=$?
     if [ $EXIT_CODE -eq 0 ]; then
       printf "\n"
-      log_succ "Processo encerrado de forma limpa."
+      log_succ "Processo encerrado."
       break
     fi
-    log_warn "O processo foi interrompido (Erro $EXIT_CODE). Reiniciando em 2 segundos..."
+    log_warn "O processo foi interrompido (Code $EXIT_CODE). Reiniciando em 2 segundos..."
     sleep 2
   done
 }
