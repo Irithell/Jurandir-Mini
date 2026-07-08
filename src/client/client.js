@@ -33,6 +33,14 @@ const msgRetryCounterCache = {
   flushAll: () => cache.flushAll(),
 };
 
+const originalDispatch = ConsoleLogger.dispatch.bind(ConsoleLogger);
+let discardLogs = false;
+
+ConsoleLogger.dispatch = (payload) => {
+  if (discardLogs) return;
+  originalDispatch(payload);
+};
+
 const colors = {
   /** @param {string} text */ cyan: (text) => `\x1b[36m${text}\x1b[0m`,
   /** @param {string} text */ white: (text) => `\x1b[37m${text}\x1b[0m`,
@@ -149,6 +157,8 @@ async function iniciarJurandir() {
   jurandir.ev.on('creds.update', /** @type {any} */ (saveCreds));
 
   if (codeMode && !jurandir.authState.creds.registered) {
+    discardLogs = true;
+
     console.log('');
     boxLog(colors.cyan('╭────────────────────────────────────────────────────╮'));
     boxLog(
@@ -164,7 +174,7 @@ async function iniciarJurandir() {
     );
     boxLog(
       colors.cyan('│') +
-        colors.gray(' Exemplo: 5511999999999 (País + DDD + Número)       ') +
+        colors.gray(' Exemplo: 5515998361316 [País + DDD + Número]       ') +
         colors.cyan('│')
     );
     boxLog(colors.cyan('╰────────────────────────────────────────────────────╯'));
@@ -174,17 +184,15 @@ async function iniciarJurandir() {
     phoneNumber = phoneNumber.replace(/\D/g, '');
 
     if (!/^\d{10,15}$/.test(phoneNumber)) {
+      discardLogs = false;
       ConsoleLogger.dispatch({
         level: 'warn',
-        lines: [
-          { message: 'Número inválido! Insira um número válido.', tags: [{ label: 'PAIR' }] },
-        ],
+        lines: [{ message: 'Número inválido! O bot será encerrado.', tags: [{ label: 'PAIR' }] }],
       });
       process.exit(1);
     }
 
     try {
-      console.log(getPad(54) + colors.yellow('\n  [ ⚙ ] Gerando código de pareamento, aguarde...'));
       await delay(1500);
       const code = await jurandir.requestPairingCode(phoneNumber, 'JURANDIR');
       const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
@@ -237,6 +245,7 @@ async function iniciarJurandir() {
       boxLog(colors.cyan('╰────────────────────────────────────────────────────╯'));
       console.log('');
     } catch (err) {
+      discardLogs = false;
       const errorMsg = err instanceof Error ? err.message : String(err);
       ConsoleLogger.dispatch({
         level: 'error',
@@ -251,6 +260,8 @@ async function iniciarJurandir() {
       clearSession(SESSION_ID);
       process.exit(1);
     }
+
+    discardLogs = false;
   }
 
   jurandir.ev.on('groups.update', async (updates) => {
@@ -299,8 +310,8 @@ async function iniciarJurandir() {
 
       qrcode.generate(qr, { small: true }, (qrStr) => {
         const qrLines = qrStr.split('\n');
-        // eslint-disable-next-line no-control-regex
-        const ansiRegex = new RegExp('\\x1B\\[[0-9;]*m', 'g');
+        const ESC = String.fromCharCode(27);
+        const ansiRegex = new RegExp(`${ESC}\\[[0-9;]*m`, 'g');
         const rawWidth = qrLines[0].replace(ansiRegex, '').length || 33;
         const qrPad = getPad(rawWidth);
         qrLines.forEach((line) => console.log(qrPad + line));
