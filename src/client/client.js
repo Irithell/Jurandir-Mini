@@ -33,22 +33,43 @@ const msgRetryCounterCache = {
   flushAll: () => cache.flushAll(),
 };
 
+const colors = {
+  /** @param {string} text */ cyan: (text) => `\x1b[36m${text}\x1b[0m`,
+  /** @param {string} text */ white: (text) => `\x1b[37m${text}\x1b[0m`,
+  /** @param {string} text */ yellow: (text) => `\x1b[33m${text}\x1b[0m`,
+  /** @param {string} text */ green: (text) => `\x1b[32m${text}\x1b[0m`,
+  /** @param {string} text */ gray: (text) => `\x1b[90m${text}\x1b[0m`,
+  /** @param {string} text */ red: (text) => `\x1b[31m${text}\x1b[0m`,
+};
+
+/**
+ * @param {number} [customWidth=54]
+ * @returns {string}
+ */
+function getPad(customWidth = 54) {
+  const cols = process.stdout.columns || 80;
+  return ' '.repeat(Math.max(0, Math.floor((cols - customWidth) / 2)));
+}
+
+/**
+ * @param {string} text
+ */
+function boxLog(text) {
+  console.log(getPad(54) + text);
+}
+
 /**
  * @param {string} question
  * @returns {Promise<string>}
  */
-const ask = (question) => {
+const askCentered = (question) => {
   return new Promise((resolve) => {
-    ConsoleLogger.dispatch({
-      level: 'tutor',
-      lines: [{ message: question, tags: [{ label: 'TUTOR' }] }],
-    });
     const rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
       terminal: true,
     });
-    rl.on('line', (answer) => {
+    rl.question(getPad(54) + question, (answer) => {
       rl.close();
       resolve(answer.trim());
     });
@@ -88,7 +109,6 @@ async function iniciarJurandir() {
   });
 
   await loadCommands();
-
   warmupCache();
 
   ConsoleLogger.dispatch({
@@ -129,9 +149,28 @@ async function iniciarJurandir() {
   jurandir.ev.on('creds.update', /** @type {any} */ (saveCreds));
 
   if (codeMode && !jurandir.authState.creds.registered) {
-    let phoneNumber = await ask(
-      'Por favor, insira o número de telefone (com DDD, sem espaços ou caracteres especiais): '
+    console.log('');
+    boxLog(colors.cyan('╭────────────────────────────────────────────────────╮'));
+    boxLog(
+      colors.cyan('│') +
+        colors.white('              CONEXÃO VIA PAIRING CODE              ') +
+        colors.cyan('│')
     );
+    boxLog(colors.cyan('├────────────────────────────────────────────────────┤'));
+    boxLog(
+      colors.cyan('│') +
+        colors.white(' Insira o número do WhatsApp que será o bot.        ') +
+        colors.cyan('│')
+    );
+    boxLog(
+      colors.cyan('│') +
+        colors.gray(' Exemplo: 5511999999999 (País + DDD + Número)       ') +
+        colors.cyan('│')
+    );
+    boxLog(colors.cyan('╰────────────────────────────────────────────────────╯'));
+    console.log('');
+
+    let phoneNumber = await askCentered(colors.yellow('  ➭ Número: '));
     phoneNumber = phoneNumber.replace(/\D/g, '');
 
     if (!/^\d{10,15}$/.test(phoneNumber)) {
@@ -145,20 +184,58 @@ async function iniciarJurandir() {
     }
 
     try {
+      console.log(getPad(54) + colors.yellow('\n  [ ⚙ ] Gerando código de pareamento, aguarde...'));
       await delay(1500);
       const code = await jurandir.requestPairingCode(phoneNumber, 'JURANDIR');
-
       const formattedCode = code?.match(/.{1,4}/g)?.join('-') || code;
-      ConsoleLogger.dispatch({
-        level: 'tutor',
-        lines: [
-          { message: `Código de pareamento: ${formattedCode}`, tags: [{ label: 'CODE' }] },
-          {
-            message: 'Insira este código nas notificações do WhatsApp para autenticar o bot.',
-            omitTimestamp: true,
-          },
-        ],
-      });
+
+      const leftSpace = ' '.repeat(17);
+      const rightSpace = ' '.repeat(18);
+
+      console.log('');
+      boxLog(colors.cyan('╭────────────────────────────────────────────────────╮'));
+      boxLog(
+        colors.cyan('│') +
+          colors.white('                 [ CÓDIGO GERADO ]                  ') +
+          colors.cyan('│')
+      );
+      boxLog(colors.cyan('├────────────────────────────────────────────────────┤'));
+      boxLog(
+        colors.cyan('│') +
+          leftSpace +
+          colors.white('CÓDIGO: ') +
+          colors.green(formattedCode) +
+          rightSpace +
+          colors.cyan('│')
+      );
+      boxLog(colors.cyan('├────────────────────────────────────────────────────┤'));
+      boxLog(
+        colors.cyan('│') +
+          colors.gray(' 1. Abra o WhatsApp no celular do bot.              ') +
+          colors.cyan('│')
+      );
+      boxLog(
+        colors.cyan('│') +
+          colors.gray(' 2. Vá em Aparelhos Conectados.                     ') +
+          colors.cyan('│')
+      );
+      boxLog(
+        colors.cyan('│') +
+          colors.gray(' 3. Toque em Conectar um aparelho.                  ') +
+          colors.cyan('│')
+      );
+      boxLog(
+        colors.cyan('│') +
+          colors.gray(' 4. Selecione Conectar com número de telefone.      ') +
+          colors.cyan('│')
+      );
+      boxLog(
+        colors.cyan('│') +
+          colors.gray(' 5. Digite o código gerado acima.                   ') +
+          colors.cyan('│')
+      );
+      boxLog(colors.cyan('╰────────────────────────────────────────────────────╯'));
+      console.log('');
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       ConsoleLogger.dispatch({
@@ -194,11 +271,40 @@ async function iniciarJurandir() {
     const { connection, lastDisconnect, qr } = update;
 
     if (qr && !codeMode) {
-      ConsoleLogger.dispatch({
-        level: 'info',
-        lines: [{ message: 'Escaneie o QR Code:', tags: [{ label: 'AUTH' }] }],
+      console.log('');
+      boxLog(colors.cyan('╭────────────────────────────────────────────────────╮'));
+      boxLog(
+        colors.cyan('│') +
+          colors.white('                CONEXÃO VIA QR CODE                 ') +
+          colors.cyan('│')
+      );
+      boxLog(colors.cyan('├────────────────────────────────────────────────────┤'));
+      boxLog(
+        colors.cyan('│') +
+          colors.gray(' Escaneie o QR Code abaixo com o seu WhatsApp.      ') +
+          colors.cyan('│')
+      );
+      boxLog(
+        colors.cyan('│') +
+          colors.gray(' Caso não tenha outro celular para ler o código,    ') +
+          colors.cyan('│')
+      );
+      boxLog(
+        colors.cyan('│') +
+          colors.gray(' feche e use a Opção [ 2 ] no Painel Iniciar.       ') +
+          colors.cyan('│')
+      );
+      boxLog(colors.cyan('╰────────────────────────────────────────────────────╯'));
+      console.log('');
+
+      qrcode.generate(qr, { small: true }, (qrStr) => {
+        const qrLines = qrStr.split('\n');
+        // eslint-disable-next-line no-control-regex
+        const ansiRegex = new RegExp('\\x1B\\[[0-9;]*m', 'g');
+        const rawWidth = qrLines[0].replace(ansiRegex, '').length || 33;
+        const qrPad = getPad(rawWidth);
+        qrLines.forEach((line) => console.log(qrPad + line));
       });
-      qrcode.generate(qr, { small: true });
     }
 
     if (connection === 'close') {
