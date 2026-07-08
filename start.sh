@@ -59,8 +59,13 @@ check_dependencies() {
 
   if [ -n "$MISSING" ]; then
     if [ -n "$NPM_FLAG" ]; then
-      printf "\n${SPACES}${YELLOW}Deseja instalar as ferramentas ausentes agora? [S/n]: ${NOCOLOR}"
-      read DO_INSTALL
+      if [ "$MODE_SKIP" -eq 1 ] || [ "$MODE_UPDATE" -eq 1 ]; then
+        DO_INSTALL="S"
+      else
+        printf "\n${SPACES}${YELLOW}Deseja instalar as ferramentas ausentes agora? [S/n]: ${NOCOLOR}"
+        read DO_INSTALL
+      fi
+      
       case "$DO_INSTALL" in
         [sS]|"")
           log_step "Instalando via gerenciador de pacotes do Termux..."
@@ -89,9 +94,44 @@ get_pkg_hash() {
   "
 }
 
+run_npm_install() {
+  printf "\n"
+  log_step "Sincronizando árvore de dependências..."
+
+  if [ -n "$NPM_FLAG" ]; then
+    printf "\n${SPACES}${YELLOW}╭───────────────────────────────────────────────────────────────╮${NOCOLOR}\n"
+    printf "${SPACES}${YELLOW}│ AVISO IMPORTANTE PARA USUÁRIOS DO TERMUX                      │${NOCOLOR}\n"
+    printf "${SPACES}${YELLOW}├───────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
+    printf "${SPACES}${YELLOW}│ A compilação nativa do motor SQLite exigirá o download de     │${NOCOLOR}\n"
+    printf "${SPACES}${YELLOW}│ pacotes pesados (como o clang) e pode demorar alguns minutos. │${NOCOLOR}\n"
+    printf "${SPACES}${YELLOW}│                                                               │${NOCOLOR}\n"
+    printf "${SPACES}${YELLOW}│ Se você notar que a velocidade de download (B/s) está muito   │${NOCOLOR}\n"
+    printf "${SPACES}${YELLOW}│ lenta, o problema é o servidor (mirror) padrão do seu Termux. │${NOCOLOR}\n"
+    printf "${SPACES}${YELLOW}│                                                               │${NOCOLOR}\n"
+    printf "${SPACES}${YELLOW}│ DICAS PARA RESOLVER LENTIDÃO:                                 │${NOCOLOR}\n"
+    printf "${SPACES}${YELLOW}│ 1. Cancele este script apertando [ Ctrl + C ].                │${NOCOLOR}\n"
+    printf "${SPACES}${YELLOW}│ 2. Digite o comando: ${WHITE}termux-change-repo${YELLOW}                       │${NOCOLOR}\n"
+    printf "${SPACES}${YELLOW}│ 3. Marque os repositórios e escolha um servidor (mirror)      │${NOCOLOR}\n"
+    printf "${SPACES}${YELLOW}│    mais rápido (ex: Ageto, Grimler ou Albatross).             │${NOCOLOR}\n"
+    printf "${SPACES}${YELLOW}│ 4. Abra o script novamente e tente instalar.                  │${NOCOLOR}\n"
+    printf "${SPACES}${YELLOW}╰───────────────────────────────────────────────────────────────╯${NOCOLOR}\n\n"
+    if [ "$MODE_SKIP" -eq 0 ] && [ "$MODE_UPDATE" -eq 0 ]; then
+      sleep 4
+    fi
+  fi
+
+  npm install $NPM_FLAG --no-audit --no-fund --loglevel=error --foreground-scripts
+  return $?
+}
+
 create_backup() {
-  printf "\n${SPACES}${YELLOW}Deseja criar um backup de segurança? [S/n]: ${NOCOLOR}"
-  read DO_BACKUP
+  if [ "$MODE_SKIP" -eq 1 ] || [ "$MODE_UPDATE" -eq 1 ]; then
+    DO_BACKUP="S"
+  else
+    printf "\n${SPACES}${YELLOW}Deseja criar um backup de segurança? [S/n]: ${NOCOLOR}"
+    read DO_BACKUP
+  fi
+  
   case "$DO_BACKUP" in
     [sS]|"")
       log_step "Criando backup do sistema..."
@@ -111,9 +151,16 @@ clean_workspace() {
   [ -d "backups" ] && mv backups .safe_zone/
   [ -f ".env" ] && mv .env .safe_zone/
   [ -f "start.sh" ] && mv start.sh .safe_zone/
+  
+  if [ -f "src/configs/config.json" ] || [ -f "src/configs/settings.json" ]; then
+    mkdir -p .safe_zone/src/configs
+    [ -f "src/configs/config.json" ] && mv src/configs/config.json .safe_zone/src/configs/
+    [ -f "src/configs/settings.json" ] && mv src/configs/settings.json .safe_zone/src/configs/
+  fi
 
   find . -mindepth 1 -maxdepth 1 ! -name '.safe_zone' -exec rm -rf {} +
-  mv .safe_zone/* ./
+  
+  mv .safe_zone/* ./ 2>/dev/null
   rm -rf .safe_zone
   log_succ "Limpeza de diretório concluída."
 }
@@ -149,6 +196,10 @@ bootstrap_updater() {
 }
 
 check_updates() {
+  if [ "$MODE_SKIP" -eq 1 ] && [ "$MODE_UPDATE" -eq 0 ]; then
+    return 0
+  fi
+
   check_dependencies
   bootstrap_updater
   
@@ -175,8 +226,14 @@ check_updates() {
         printf "${SPACES}${YELLOW}│ Nova versão:  ${GREEN}v${DISPLAY_VER}${NOCOLOR}\n"
         printf "${SPACES}${YELLOW}╰───────────────────────────────────────────────────────────────╯${NOCOLOR}\n"
         
-        printf "\n${SPACES}${CYAN}Deseja instalar a atualização agora? [S/n]: ${NOCOLOR}"
-        read DO_UPDATE
+        if [ "$MODE_UPDATE" -eq 1 ]; then
+          DO_UPDATE="S"
+          printf "\n${SPACES}${CYAN}Atualização automática acionada (--update)...${NOCOLOR}\n"
+        else
+          printf "\n${SPACES}${CYAN}Deseja instalar a atualização agora? [S/n]: ${NOCOLOR}"
+          read DO_UPDATE
+        fi
+        
         case "$DO_UPDATE" in
           [sS]|"")
             printf "\n"
@@ -193,10 +250,9 @@ check_updates() {
                 log_step "Alteração estrutural detectada nas dependências."
                 log_step "Eliminando cache de pacotes antigos..."
                 rm -rf node_modules package-lock.json
-                log_step "Instalando dependências (npm)..."
-                npm install $NPM_FLAG >/dev/null 2>&1
+                run_npm_install
               fi
-              log_succ "Atualizado para v${REMOTE_VER}!"
+              log_succ "Atualizado para v${DISPLAY_VER}!"
             else
               log_err "Falha na atualização."
             fi
@@ -264,9 +320,12 @@ explore_versions() {
             if [ $? -eq 0 ]; then
               rm pacote.tar.gz
               chmod +x *.sh 2>/dev/null
-              log_step "Instalando dependências..."
-              npm install $NPM_FLAG >/dev/null 2>&1
-              log_succ "Versão $TARGET_TAG instalada."
+              run_npm_install
+              if [ $? -eq 0 ]; then
+                log_succ "Versão $TARGET_TAG instalada."
+              else
+                log_err "A instalação de dependências falhou."
+              fi
             else
               log_err "Falha ao extrair pacote."
             fi
@@ -331,9 +390,12 @@ manage_backups() {
                   tar -xzf "$TARGET"
                   if [ $? -eq 0 ]; then
                     chmod +x *.sh 2>/dev/null
-                    log_step "Instalando dependências..."
-                    npm install $NPM_FLAG >/dev/null 2>&1
-                    log_succ "Backup restaurado com sucesso."
+                    run_npm_install
+                    if [ $? -eq 0 ]; then
+                      log_succ "Backup restaurado com sucesso."
+                    else
+                      log_err "A instalação de dependências falhou."
+                    fi
                   else
                     log_err "Falha ao restaurar."
                   fi
@@ -393,8 +455,15 @@ start_bot() {
   
   if [ ! -f "launcher.js" ]; then
      log_err "O arquivo launcher.js não foi encontrado."
-     printf "\n${SPACES}${YELLOW}Deseja instalar o bot agora? [S/n]: ${NOCOLOR}"
-     read DO_INSTALL
+     
+     if [ "$MODE_SKIP" -eq 1 ] || [ "$MODE_UPDATE" -eq 1 ]; then
+       DO_INSTALL="S"
+       printf "\n${SPACES}${YELLOW}Instalação automática acionada pelas flags...${NOCOLOR}\n"
+     else
+       printf "\n${SPACES}${YELLOW}Deseja instalar o bot agora? [S/n]: ${NOCOLOR}"
+       read DO_INSTALL
+     fi
+     
      case "$DO_INSTALL" in
        [sS]|"")
          create_backup
@@ -404,13 +473,17 @@ start_bot() {
          node scripts/updater.mjs reinstall
          if [ $? -eq 0 ]; then
            chmod +x *.sh 2>/dev/null
-           log_step "Instalando módulos..."
-           npm install $NPM_FLAG >/dev/null 2>&1
-           log_succ "Instalação concluída!"
+           run_npm_install
+           if [ $? -eq 0 ]; then
+             log_succ "Instalação concluída!"
+           else
+             log_err "A instalação falhou. Abortando inicialização."
+             if [ "$MODE_SKIP" -eq 0 ]; then printf "\n${SPACES}Pressione ENTER para voltar."; read JUNK; fi
+             return
+           fi
          else
            log_err "A instalação falhou. Abortando inicialização."
-           printf "\n${SPACES}Pressione ENTER para voltar."
-           read JUNK
+           if [ "$MODE_SKIP" -eq 0 ]; then printf "\n${SPACES}Pressione ENTER para voltar."; read JUNK; fi
            return
          fi
          ;;
@@ -419,9 +492,36 @@ start_bot() {
          ;;
      esac
   fi
+  
+  SQLITE_SCRIPT="node_modules/@irithell-js/better-sqlite3-termux/dist/install.cjs"
+  if [ -f "$SQLITE_SCRIPT" ]; then
+    node -e "require('@irithell-js/better-sqlite3-termux')" >/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+      log_warn "O postinstall do NPM foi bloqueado pelo sistema."
+      log_step "Forçando a compilação manual do motor SQLite..."
+      printf "\n"
+      node "$SQLITE_SCRIPT"
+      if [ $? -eq 0 ]; then
+        printf "\n"
+        log_succ "Motor SQLite compilado com sucesso!"
+        sleep 2
+        show_banner
+      else
+        printf "\n"
+        log_err "Falha na compilação manual de emergência."
+        if [ "$MODE_SKIP" -eq 0 ]; then printf "\n${SPACES}Pressione ENTER para voltar."; read JUNK; fi
+        return
+      fi
+    fi
+  fi
     
   while :; do
-    if [ "$1" = "--code" ]; then node launcher.js --code; else node launcher.js; fi
+    if [ "$MODE_CODE" -eq 1 ]; then 
+      node launcher.js --code 
+    else 
+      node launcher.js 
+    fi
+    
     EXIT_CODE=$?
     if [ "$EXIT_CODE" -eq 0 ]; then
       printf "\n"
@@ -458,8 +558,8 @@ show_menu() {
     read OPTION
     
     case "$OPTION" in
-      1) start_bot ;;
-      2) start_bot "--code" ;;
+      1) MODE_CODE=0; start_bot ;;
+      2) MODE_CODE=1; start_bot ;;
       3) 
         check_dependencies
         printf "\n"
@@ -475,9 +575,12 @@ show_menu() {
             node scripts/updater.mjs reinstall
             if [ $? -eq 0 ]; then
               chmod +x *.sh 2>/dev/null
-              log_step "Instalando módulos..."
-              npm install $NPM_FLAG >/dev/null 2>&1
-              log_succ "Instalação concluída!"
+              run_npm_install
+              if [ $? -eq 0 ]; then
+                log_succ "Instalação concluída!"
+              else
+                log_err "A instalação falhou."
+              fi
             else
               log_err "A instalação falhou."
             fi
@@ -496,9 +599,12 @@ show_menu() {
       6) manage_backups ;;
       7)
         printf "\n"
-        log_step "Instalando dependências..."
-        npm install $NPM_FLAG
-        log_succ "Concluído!"
+        run_npm_install
+        if [ $? -eq 0 ]; then
+          log_succ "Concluído!"
+        else
+          log_err "Falha na instalação de dependências."
+        fi
         printf "\n${SPACES}Pressione ENTER para voltar."
         read JUNK
         ;;
@@ -536,4 +642,22 @@ show_menu() {
   done
 }
 
-if [ "$1" = "qr" ]; then start_bot; elif [ "$1" = "code" ]; then start_bot "--code"; else show_menu; fi
+MODE_CODE=0
+MODE_SKIP=0
+MODE_UPDATE=0
+HAS_FLAGS=0
+
+for arg in "$@"; do
+  case $arg in
+    --code|code) MODE_CODE=1; HAS_FLAGS=1 ;;
+    --skip|skip) MODE_SKIP=1; HAS_FLAGS=1 ;;
+    --update|update) MODE_UPDATE=1; HAS_FLAGS=1 ;;
+    --qr|qr) MODE_CODE=0; HAS_FLAGS=1 ;;
+  esac
+done
+
+if [ "$HAS_FLAGS" -eq 1 ]; then
+  start_bot
+else
+  show_menu
+fi

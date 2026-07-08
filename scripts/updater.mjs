@@ -14,6 +14,9 @@ const TAR_URL =
 const TMP_DIR = path.join(ROOT_DIR, '.tmp_update');
 const EXTRACTED_DIR = TMP_DIR;
 
+const PROTECTED_CONFIGS = ['src/configs/config.json', 'src/configs/settings.json'];
+const PROTECTED_FILES = ['start.sh', 'scripts/updater.mjs'];
+
 const args = process.argv.slice(2);
 const action = args[0] || 'check';
 
@@ -60,7 +63,7 @@ function fetchJson(url) {
           try {
             resolve(JSON.parse(data));
           } catch (e) {
-            reject(new Error('JSON Inválido'));
+            reject(new Error('Falha de Parse JSON'));
           }
         });
       })
@@ -114,17 +117,17 @@ async function performUpdate(forceAll = false, isReinstall = false) {
       localManifest.version === remoteManifest.version &&
       localManifest.build_time === remoteManifest.build_time
     ) {
-      if (action !== 'check') logSuccess('Versão mais recente já instalada.');
+      if (action !== 'check') logSuccess('Sistema operando na versão mais recente.');
       process.exit(0);
     }
 
     if (action === 'check') process.exit(1);
 
-    logStep(`Sincronizando v${remoteManifest.version}`);
+    logStep(`Iniciando handshake com versão v${remoteManifest.version}`);
     cleanTemp();
     fs.mkdirSync(TMP_DIR, { recursive: true });
 
-    console.log(`\n\x1b[36m[ i ] Plano de Atualização (Local vs Remoto):\x1b[0m`);
+    console.log(`\n\x1b[36m[ i ] Diff Estrutural de Atualização:\x1b[0m`);
     const allFiles = new Set([
       ...Object.keys(localManifest.files),
       ...Object.keys(remoteManifest.files),
@@ -134,20 +137,20 @@ async function performUpdate(forceAll = false, isReinstall = false) {
     for (const file of sortedFiles) {
       const oldHash = localManifest.files[file];
       const newHash = remoteManifest.files[file];
-      if (!oldHash && newHash) logItem('32', '+', file, '\x1b[32m(Novo)\x1b[0m');
-      else if (oldHash && !newHash) logItem('31', '-', file, '\x1b[31m(Removido)\x1b[0m');
-      else if (oldHash !== newHash) logItem('33', '~', file, '\x1b[33m(Modificado)\x1b[0m');
+      if (!oldHash && newHash) logItem('32', '+', file, '\x1b[32m(Adição)\x1b[0m');
+      else if (oldHash && !newHash) logItem('31', '-', file, '\x1b[31m(Remoção)\x1b[0m');
+      else if (oldHash !== newHash) logItem('33', '~', file, '\x1b[33m(Modificação)\x1b[0m');
     }
     console.log('');
 
     const tarDest = path.join(TMP_DIR, 'main.tar.gz');
-    logStep('Baixando pacote...');
+    logStep('Processando download do payload...');
     await downloadTar(TAR_URL, tarDest);
 
-    logStep('Extraindo pacote...');
+    logStep('Descompactando Tarball no ambiente temporário...');
     execSync(`tar -xzf main.tar.gz`, { cwd: TMP_DIR, stdio: 'ignore' });
 
-    console.log(`\n\x1b[36m[ ⚙ ] Validando integridade dos arquivos (SHA-256)...\x1b[0m`);
+    console.log(`\n\x1b[36m[ ⚙ ] Validando assinaturas de integridade...\x1b[0m`);
     const filesToApply = [];
     let validationErrors = 0;
 
@@ -155,50 +158,58 @@ async function performUpdate(forceAll = false, isReinstall = false) {
       const extractedFilePath = path.join(EXTRACTED_DIR, file);
 
       if (!fs.existsSync(extractedFilePath)) {
-        logItem('31', 'FALHA', file, '\x1b[31m(Arquivo ausente)\x1b[0m');
+        logItem('31', 'FALHA', file, '\x1b[31m(Ausente no Payload)\x1b[0m');
         validationErrors++;
         continue;
       }
 
       const actualHash = getFileHash(extractedFilePath);
       if (actualHash !== expectedHash) {
-        logItem('31', 'FALHA', file, '\x1b[31m(Hash Incompatível)\x1b[0m');
+        logItem('31', 'FALHA', file, '\x1b[31m(Violação de Hash)\x1b[0m');
         validationErrors++;
         continue;
       }
 
       logItem('32', 'OK', file);
 
-      if (
-        forceAll ||
-        isReinstall ||
-        localManifest.files[file] !== expectedHash ||
-        !fs.existsSync(path.join(ROOT_DIR, file))
-      ) {
+      const oldManifestHash = localManifest.files[file];
+      const isProtected = PROTECTED_CONFIGS.includes(file);
+      const fileExists = fs.existsSync(path.join(ROOT_DIR, file));
+
+      let shouldApply = false;
+
+      if (!fileExists) {
+        shouldApply = true;
+      } else if (oldManifestHash !== expectedHash) {
+        shouldApply = true;
+      } else if (forceAll || isReinstall) {
+        if (!isProtected) {
+          shouldApply = true;
+        }
+      }
+
+      if (shouldApply) {
         filesToApply.push(file);
       }
     }
 
     if (validationErrors > 0) {
       throw new Error(
-        `Validação falhou em ${validationErrors} arquivo(s). Operação abortada por segurança.`
+        `Validação interrompida: ${validationErrors} conflito(s) estruturais. Operação abortada.`
       );
     }
 
-    const confirm = await promptConfirm(
-      'Deseja prosseguir e aplicar estas alterações no sistema local?'
-    );
+    const confirm = await promptConfirm('Deseja prosseguir com a injeção dos arquivos no sistema?');
     if (!confirm) {
       cleanTemp();
       console.log('');
-      logWarn('Operação cancelada pelo usuário.');
+      logWarn('Transação cancelada.');
       process.exit(1);
     }
 
     console.log('');
-    logStep('Aplicando alterações no sistema...');
+    logStep('Aplicando mapeamento de arquivos...');
     let deletedCount = 0;
-    const PROTECTED_FILES = ['start.sh', 'scripts/updater.mjs'];
 
     const targetList = isReinstall
       ? Object.keys(localManifest.files)
@@ -206,6 +217,8 @@ async function performUpdate(forceAll = false, isReinstall = false) {
 
     for (const file of targetList) {
       if (isReinstall && PROTECTED_FILES.includes(file)) continue;
+      if (isReinstall && PROTECTED_CONFIGS.includes(file)) continue;
+
       const filePath = path.join(ROOT_DIR, file);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
@@ -235,8 +248,8 @@ async function performUpdate(forceAll = false, isReinstall = false) {
     cleanTemp();
 
     console.log('');
-    logSuccess('Atualização concluída com sucesso!');
-    logWarn(`Arquivos aplicados: ${appliedCount} | Removidos: ${deletedCount}`);
+    logSuccess('Build aplicado e sincronizado com sucesso.');
+    logWarn(`Modificações: ${appliedCount} aplicados | ${deletedCount} descartados`);
     process.exit(0);
   } catch (error) {
     cleanTemp();
