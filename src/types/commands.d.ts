@@ -1,9 +1,10 @@
 import { WASocket, WAMessage } from '@whiskeysockets/baileys';
-import { InteractivePayload, MediaType } from './messages';
+import { InteractivePayload, MediaType } from './buttons';
 
 export interface BotConfig {
   name: string;
   prefix: string;
+  buttons: 0 | 1 | 2;
   owner: {
     name: string;
     phones: string[];
@@ -189,6 +190,7 @@ export interface CommandContext {
   body: string;
   command: string;
   args: string[];
+  fullArgs: string;
   prefix: string;
   userJid: string;
   isGroup: boolean;

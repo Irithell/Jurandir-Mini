@@ -33,6 +33,8 @@ function spawnBot() {
         pendingRestart = false;
         restartBot();
       }
+    } else if (m.type === 'RESTART') {
+      restartBot();
     }
   });
 

@@ -1,14 +1,11 @@
-import { delay, prepareWAMessageMedia } from '@whiskeysockets/baileys';
+import { delay } from '@whiskeysockets/baileys';
 import fs from 'node:fs';
 
 /**
  * @typedef {import('@whiskeysockets/baileys').WASocket} WASocket
  * @typedef {import('@whiskeysockets/baileys').WAMessage} WAMessage
  * @typedef {import('@whiskeysockets/baileys').AnyMessageContent} AnyMessageContent
- * @typedef {import('@/types/messages.d.ts').InteractivePayload} InteractivePayload
- * @typedef {import('@/types/messages.d.ts').InteractiveCard} InteractiveCard
- * @typedef {import('@/types/messages.d.ts').CleanButton} CleanButton
- * @typedef {import('@/types/messages.d.ts').MediaType} MediaType
+ * @typedef {import('@/types/buttons.d.ts').MediaType} MediaType
  */
 
 const TYPING_DELAY = 0;
@@ -92,7 +89,7 @@ export async function react(jurandir, jid, emoji, messageKey) {
       react: { text: emoji, key: messageKey },
     });
     return res;
-  } catch (err) {
+  } catch {
     return undefined;
   }
 }
@@ -421,130 +418,3 @@ export async function sendTextWithMedia(jurandir, to, mediaUrl, mediaType, capti
   await jurandir.sendMessage(to, messageContent, options);
 }
 
-/**
- * @param {WASocket} jurandir
- * @param {InteractiveCard['header']} header
- * @returns {Promise<{ headerObj: object, headerType: string | undefined }>}
- */
-async function prepareCardHeader(jurandir, header) {
-  if (!header) return { headerObj: {}, headerType: undefined };
-
-  if (header.mediaBuffer) {
-    const media = await prepareWAMessageMedia(
-      { video: header.mediaBuffer, gifPlayback: header.isGif || false },
-      { upload: jurandir.waUploadToServer }
-    );
-    return {
-      headerObj: { hasMediaAttachment: true, videoMessage: media.videoMessage },
-      headerType: 'VIDEO',
-    };
-  }
-
-  if (header.mediaUrl) {
-    const isVideo = header.mediaType === 'video';
-    const media = await prepareWAMessageMedia(
-      isVideo ? { video: { url: header.mediaUrl } } : { image: { url: header.mediaUrl } },
-      { upload: jurandir.waUploadToServer }
-    );
-    return isVideo
-      ? {
-          headerObj: { hasMediaAttachment: true, videoMessage: media.videoMessage },
-          headerType: 'VIDEO',
-        }
-      : {
-          headerObj: { hasMediaAttachment: true, imageMessage: media.imageMessage },
-          headerType: 'IMAGE',
-        };
-  }
-
-  return { headerObj: {}, headerType: undefined };
-}
-
-/**
- * @param {CleanButton} button
- * @returns {{ name: string, buttonParamsJson: string }}
- */
-function buildNativeButton(button) {
-  switch (button.type) {
-    case 'reply':
-      return {
-        name: 'quick_reply',
-        buttonParamsJson: JSON.stringify({ display_text: button.text, id: button.id }),
-      };
-    case 'list':
-      return {
-        name: 'single_select',
-        buttonParamsJson: JSON.stringify({ title: button.text, sections: button.sections }),
-      };
-    case 'url':
-      return {
-        name: 'cta_url',
-        buttonParamsJson: JSON.stringify({
-          display_text: button.text,
-          url: button.url,
-          merchant_url: button.url,
-        }),
-      };
-    case 'copy':
-      return {
-        name: 'cta_copy',
-        buttonParamsJson: JSON.stringify({
-          display_text: button.text,
-          copy_code: button.payload,
-          id: button.id || button.payload,
-        }),
-      };
-    default:
-      throw new Error(`Tipo de botão desconhecido: ${/** @type {any} */ (button).type}`);
-  }
-}
-
-/**
- *
- * @param {WASocket} jurandir
- * @param {string} to
- * @param {InteractivePayload} payload
- */
-export async function sendButton(jurandir, to, payload) {
-  const { bodyText = '', cards, quotedMessage, mentions } = payload;
-
-  const carouselCards = await Promise.all(
-    cards.map(async (card) => {
-      const { headerObj, headerType } = await prepareCardHeader(jurandir, card.header);
-
-      return {
-        header: headerObj,
-        headerType,
-        body: { text: card.body },
-        footer: card.footer ? { text: card.footer } : null,
-        nativeFlowMessage: { buttons: card.buttons.map(buildNativeButton) },
-      };
-    })
-  );
-
-  /** @type {object | null} */
-  let contextInfo = null;
-
-  if (quotedMessage?.key?.id && quotedMessage.message) {
-    contextInfo = {
-      stanzaId: quotedMessage.key.id,
-      participant: quotedMessage.key.participant || quotedMessage.key.remoteJid || null,
-      quotedMessage: quotedMessage.message,
-      ...(mentions?.length ? { mentionedJid: mentions } : {}),
-    };
-  } else if (mentions?.length) {
-    contextInfo = { mentionedJid: mentions };
-  }
-
-  await jurandir.relayMessage(
-    to,
-    {
-      interactiveMessage: {
-        body: { text: bodyText },
-        carouselMessage: { cards: carouselCards },
-        contextInfo,
-      },
-    },
-    {}
-  );
-}

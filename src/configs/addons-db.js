@@ -1,4 +1,4 @@
-import Database from '@irithell-js/better-sqlite3-termux';
+import Database from 'better-sqlite3';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdirSync } from 'node:fs';

@@ -37,7 +37,7 @@ export default async ({
   from,
   info,
   prefix,
-  utils: { react, toUnicodeBoldUpper, sendButton },
+  utils: { react, toUnicodeBoldUpper, sendButton, sendTextWithMedia },
   botConfig,
 }) => {
   const startTime = Date.now();
@@ -78,9 +78,35 @@ export default async ({
 
   const bannerUrl = botConfig.assets.primary.headerImage;
   const botName = botConfig.name.toUpperCase();
+  const buttonMode = botConfig.buttons !== undefined ? botConfig.buttons : 2;
+
+  if (buttonMode === 0) {
+    const textMenuLines = categories
+      .map((category, index) => {
+        const emoji = shuffledEmojis[index % shuffledEmojis.length];
+        return `┃ ${emoji} ${prefix}${toUnicodeBoldUpper('menu' + category)}`;
+      })
+      .join('\n');
+
+    const textBody = `${bodyText}
+┃ 
+┃  ${toUnicodeBoldUpper(`[ TOTAL: ${totalCommandsCount} COMANDOS ]`)}
+┃ 
+${textMenuLines}
+┃
+╰╔═════════════════════╗
+╭┤           🐱  ${botName}  🐱
+╰╚═════════════════════╝`;
+
+    await sendTextWithMedia(jurandir, from, bannerUrl, 'image', textBody, info);
+    return;
+  }
+
+  const forceCarousel = buttonMode === 1;
 
   await sendButton(jurandir, from, {
     bodyText: toUnicodeBoldUpper(`${botName} - CAIXA DE COMANDOS`),
+    asCarousel: forceCarousel,
     cards: [
       {
         header: { mediaUrl: bannerUrl, mediaType: 'image' },
@@ -93,6 +119,7 @@ export default async ({
             sections: [
               {
                 title: toUnicodeBoldUpper(`TOTAL: ${totalCommandsCount} COMANDOS`),
+                highlight_label: toUnicodeBoldUpper('🐱'),
                 rows,
               },
             ],

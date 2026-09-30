@@ -1,6 +1,7 @@
 {
   "name": "Jurandir Mini",
   "prefix": "!",
+  "buttons": 2,
   "owner": {
     "name": "Irithell",
     "phones": [

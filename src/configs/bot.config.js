@@ -10,6 +10,7 @@ const _cfg = JSON.parse(readFileSync(configPath, 'utf-8'));
 export const botConfig = {
   name: _cfg.name,
   prefix: _cfg.prefix,
+  buttons: _cfg.buttons !== undefined ? _cfg.buttons : 2,
   owner: {
     name: _cfg.owner.name,
     phones: _cfg.owner.phones,
@@ -25,7 +26,12 @@ export const botConfig = {
   },
 };
 
-export const getAssetUrl = (section, asset) => botConfig.assets[section][asset];
+/**
+ * @param {string} section
+ * @param {string} asset
+ * @returns {string}
+ */
+export const getAssetUrl = (section, asset) => (/** @type {any} */ (botConfig.assets))[section]?.[asset];
 
 export const Assets = {
   primary: botConfig.assets.primary,
