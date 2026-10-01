@@ -592,7 +592,9 @@ async function startInstall(ctx) {
           text: toUnicodeBoldUpper(`> ⚙️ ${progressText}`),
           edit: msgKey,
         });
-      } catch {}
+      } catch {
+        // ignore message edit failures
+      }
     }
   })();
 
@@ -651,7 +653,9 @@ async function startUpdate(ctx) {
           text: toUnicodeBoldUpper(`> 🔄 ${progressText}`),
           edit: msgKey,
         });
-      } catch {}
+      } catch {
+        // ignore message edit failures
+      }
     }
   })();
 

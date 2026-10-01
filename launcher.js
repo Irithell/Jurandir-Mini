@@ -33,6 +33,8 @@ function spawnBot() {
         pendingRestart = false;
         restartBot();
       }
+    } else if (m.type === 'RESTART') {
+      restartBot();
     }
   });
 
@@ -60,7 +62,12 @@ function startWatcher() {
     cwd: __dirname,
     persistent: true,
     ignoreInitial: true,
-    ignored: (f) => path.basename(f).startsWith('.'),
+    ignored: (f) => {
+      const base = path.basename(f);
+      if (base.startsWith('.')) return true;
+      if (base.endsWith('.json')) return true;
+      return false;
+    },
   }).on('all', () => {
     if (restartDebounce) clearTimeout(restartDebounce);
     restartDebounce = setTimeout(() => {

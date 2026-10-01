@@ -1,4 +1,4 @@
-import Database from '@irithell-js/better-sqlite3-termux';
+import Database from 'better-sqlite3';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdirSync } from 'node:fs';
@@ -57,7 +57,7 @@ db.exec(`
 /**
  * @param {string} query
  * @param {any[]} params
- * @returns {import('@irithell-js/better-sqlite3-termux').RunResult}
+ * @returns {import('better-sqlite3').RunResult}
  */
 export const dbRun = (query, params = []) => {
   const stmt = db.prepare(query);

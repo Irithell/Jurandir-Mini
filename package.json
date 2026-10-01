@@ -1,6 +1,6 @@
 {
   "name": "Jurandir Mini",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Bot Jurandir Mini",
   "type": "module",
   "main": "src/client/client.js",
@@ -17,11 +17,12 @@
   "license": "MIT",
   "dependencies": {
     "@hapi/boom": "^9.1.4",
-    "@irithell-js/better-sqlite3-termux": "^1.0.6",
     "@whiskeysockets/baileys": "npm:@irithell-js/baileys@latest",
+    "better-sqlite3": "^13.0.3",
     "chalk": "^5.6.2",
     "chokidar": "^5.0.0",
     "dotenv": "^17.3.1",
+    "fluent-ffmpeg": "^2.1.3",
     "linkify-it": "^5.0.0",
     "moment-timezone": "^0.6.0",
     "node-cache": "^5.1.2",
@@ -29,10 +30,14 @@
     "qrcode-terminal": "^0.12.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/fluent-ffmpeg": "^2.1.28",
+    "@types/linkify-it": "^5.0.0",
     "@types/qrcode-terminal": "^0.12.2",
     "eslint": "^9.18.0",
     "globals": "^15.14.0",
-    "prettier": "^3.4.2"
+    "prettier": "^3.4.2",
+    "typescript": "^7.0.2"
   },
   "engines": {
     "node": ">=20.0.0"

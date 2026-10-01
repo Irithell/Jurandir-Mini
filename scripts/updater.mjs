@@ -15,34 +15,39 @@ const TMP_DIR = path.join(ROOT_DIR, '.tmp_update');
 const EXTRACTED_DIR = TMP_DIR;
 
 const PROTECTED_CONFIGS = ['src/configs/config.json', 'src/configs/settings.json'];
-const PROTECTED_FILES = ['start.sh', 'scripts/updater.mjs'];
+const PROTECTED_FILES = ['start.sh', 'install.sh', 'scripts/updater.mjs'];
 
 const args = process.argv.slice(2);
 const action = args[0] || 'check';
 
+const cols = process.stdout.columns || parseInt(process.env.COLUMNS, 10) || 80;
+const width = 65;
+const pad = Math.max(0, Math.floor((cols - width) / 2));
+const SPACES = ' '.repeat(pad);
+
 function logInfo(msg) {
-  console.log(`\x1b[36m[ i ]\x1b[0m ${msg}`);
+  console.log(`${SPACES}\x1b[36m[ i ]\x1b[0m ${msg}`);
 }
 function logStep(msg) {
-  console.log(`\x1b[36m[ ⚙ ]\x1b[0m ${msg}`);
+  console.log(`${SPACES}\x1b[36m[ ⚙ ]\x1b[0m ${msg}`);
 }
 function logSuccess(msg) {
-  console.log(`\x1b[32m[ ✓ ]\x1b[0m ${msg}`);
+  console.log(`${SPACES}\x1b[32m[ ✓ ]\x1b[0m ${msg}`);
 }
 function logWarn(msg) {
-  console.log(`\x1b[33m[ ! ]\x1b[0m ${msg}`);
+  console.log(`${SPACES}\x1b[33m[ ! ]\x1b[0m ${msg}`);
 }
 function logError(msg) {
-  console.log(`\x1b[31m[ x ]\x1b[0m ${msg}`);
+  console.log(`${SPACES}\x1b[31m[ x ]\x1b[0m ${msg}`);
 }
 function logItem(color, icon, file, extra = '') {
-  console.log(`  \x1b[${color}m[ ${icon} ]\x1b[0m ${file} ${extra}`);
+  console.log(`${SPACES}  \x1b[${color}m[ ${icon} ]\x1b[0m ${file} ${extra}`);
 }
 
 function promptConfirm(question) {
   return new Promise((resolve) => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    rl.question(`\n\x1b[33m${question} [S/n]: \x1b[0m`, (answer) => {
+    rl.question(`\n${SPACES}\x1b[33m${question} [S/n]: \x1b[0m`, (answer) => {
       rl.close();
       resolve(answer.trim() === '' || answer.trim().toLowerCase() === 's');
     });
@@ -127,7 +132,7 @@ async function performUpdate(forceAll = false, isReinstall = false) {
     cleanTemp();
     fs.mkdirSync(TMP_DIR, { recursive: true });
 
-    console.log(`\n\x1b[36m[ i ] Diff Estrutural de Atualização:\x1b[0m`);
+    console.log(`\n${SPACES}\x1b[36m[ i ] Diff Estrutural de Atualização:\x1b[0m`);
     const allFiles = new Set([
       ...Object.keys(localManifest.files),
       ...Object.keys(remoteManifest.files),
@@ -150,7 +155,7 @@ async function performUpdate(forceAll = false, isReinstall = false) {
     logStep('Descompactando Tarball no ambiente temporário...');
     execSync(`tar -xzf main.tar.gz`, { cwd: TMP_DIR, stdio: 'ignore' });
 
-    console.log(`\n\x1b[36m[ ⚙ ] Validando assinaturas de integridade...\x1b[0m`);
+    console.log(`\n${SPACES}\x1b[36m[ ⚙ ] Validando assinaturas de integridade...\x1b[0m`);
     const filesToApply = [];
     let validationErrors = 0;
 
@@ -199,12 +204,14 @@ async function performUpdate(forceAll = false, isReinstall = false) {
       );
     }
 
-    const confirm = await promptConfirm('Deseja prosseguir com a injeção dos arquivos no sistema?');
-    if (!confirm) {
-      cleanTemp();
-      console.log('');
-      logWarn('Transação cancelada.');
-      process.exit(1);
+    if (!isReinstall && !forceAll && process.stdin.isTTY) {
+      const confirm = await promptConfirm('Deseja prosseguir com a injeção dos arquivos no sistema?');
+      if (!confirm) {
+        cleanTemp();
+        console.log('');
+        logWarn('Transação cancelada.');
+        process.exit(1);
+      }
     }
 
     console.log('');
