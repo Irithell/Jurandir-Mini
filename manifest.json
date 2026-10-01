@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "build_time": 1790872493864,
+  "build_time": 1790872865821,
   "files": {
     ".editorconfig": "999c374e129517658aa4fd08a4879fefc20df9717d792153a460ae36afe4904f",
     ".prettierrc": "af43a3ad42a61ed745fc18d44faf9fceec0ee155a4e128487be4ac7569c986de",
@@ -15,7 +15,7 @@
     "package.json": "62c8b248bc44041dd2e7bf98d6dc1664cc4f97c3b1096511a644c480345ab7d7",
     "scripts/updater.mjs": "82ceb02399be6c11074f40eb4b00e222e20603514cf1d63c2540236f624d0ef3",
     "src/client/auth.js": "664a9c62ee09fc076a46ff3e3e0759eabefa790b7e344801425b8ad1d55bff90",
-    "src/client/client.js": "c5863fe68e245759733884b40b6d47e3dc6bff63746b62e6767edf30333f139d",
+    "src/client/client.js": "daa99c9a4c672e00c3a6fe8b33e92ee2a07449a2c599c6c71d55467bca0c6c8c",
     "src/commands/addons/addon.js": "035baa5878a662cd2f35328dcea1d5d88008c9f201b03776426d194dfa07507d",
     "src/commands/config-bot/adddono.js": "037041484df736121892d293198154d09f11ed51cfc288c4d38589c7e3fca608",
     "src/commands/config-bot/deldono.js": "a9e9c5a4ce62e3a6d080fd50bc959a264d76b9688911f462651a66ea90b44abe",

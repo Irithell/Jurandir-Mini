@@ -143,7 +143,7 @@ async function iniciarJurandir() {
     auth: {
       creds: state.creds,
       keys: makeCacheableSignalKeyStore(
-        /** @type {import('@whiskeysockets/baileys').SignalKeyStore} */ (state.keys),
+        /** @type {import('@whiskeysockets/baileys').SignalKeyStore} */(state.keys),
         pino({ level: 'silent' })
       ),
     },
@@ -154,7 +154,7 @@ async function iniciarJurandir() {
 
   await initAddons(jurandir);
 
-  jurandir.ev.on('creds.update', /** @type {any} */ (saveCreds));
+  jurandir.ev.on('creds.update', /** @type {any} */(saveCreds));
 
   if (codeMode && !jurandir.authState.creds.registered) {
     discardLogs = true;
@@ -163,19 +163,19 @@ async function iniciarJurandir() {
     boxLog(colors.cyan('╭────────────────────────────────────────────────────╮'));
     boxLog(
       colors.cyan('│') +
-        colors.white('              CONEXÃO VIA PAIRING CODE              ') +
-        colors.cyan('│')
+      colors.white('              CONEXÃO VIA PAIRING CODE              ') +
+      colors.cyan('│')
     );
     boxLog(colors.cyan('├────────────────────────────────────────────────────┤'));
     boxLog(
       colors.cyan('│') +
-        colors.white(' Insira o número do WhatsApp que será o bot.        ') +
-        colors.cyan('│')
+      colors.white(' Insira o número do WhatsApp que será o bot.        ') +
+      colors.cyan('│')
     );
     boxLog(
       colors.cyan('│') +
-        colors.gray(' Exemplo: 5515998361316 [País + DDD + Número]       ') +
-        colors.cyan('│')
+      colors.gray(' Exemplo: 5515998361316 [País + DDD + Número]       ') +
+      colors.cyan('│')
     );
     boxLog(colors.cyan('╰────────────────────────────────────────────────────╯'));
     console.log('');
@@ -204,43 +204,43 @@ async function iniciarJurandir() {
       boxLog(colors.cyan('╭────────────────────────────────────────────────────╮'));
       boxLog(
         colors.cyan('│') +
-          colors.white('                 [ CÓDIGO GERADO ]                  ') +
-          colors.cyan('│')
+        colors.white('                 [ CÓDIGO GERADO ]                  ') +
+        colors.cyan('│')
       );
       boxLog(colors.cyan('├────────────────────────────────────────────────────┤'));
       boxLog(
         colors.cyan('│') +
-          leftSpace +
-          colors.white('CÓDIGO: ') +
-          colors.green(formattedCode) +
-          rightSpace +
-          colors.cyan('│')
+        leftSpace +
+        colors.white('CÓDIGO: ') +
+        colors.green(formattedCode) +
+        rightSpace +
+        colors.cyan('│')
       );
       boxLog(colors.cyan('├────────────────────────────────────────────────────┤'));
       boxLog(
         colors.cyan('│') +
-          colors.gray(' 1. Abra o WhatsApp no celular do bot.              ') +
-          colors.cyan('│')
+        colors.gray(' 1. Abra o WhatsApp no celular do bot.              ') +
+        colors.cyan('│')
       );
       boxLog(
         colors.cyan('│') +
-          colors.gray(' 2. Vá em Aparelhos Conectados.                     ') +
-          colors.cyan('│')
+        colors.gray(' 2. Vá em Aparelhos Conectados.                     ') +
+        colors.cyan('│')
       );
       boxLog(
         colors.cyan('│') +
-          colors.gray(' 3. Toque em Conectar um aparelho.                  ') +
-          colors.cyan('│')
+        colors.gray(' 3. Toque em Conectar um aparelho.                  ') +
+        colors.cyan('│')
       );
       boxLog(
         colors.cyan('│') +
-          colors.gray(' 4. Selecione Conectar com número de telefone.      ') +
-          colors.cyan('│')
+        colors.gray(' 4. Selecione Conectar com número de telefone.      ') +
+        colors.cyan('│')
       );
       boxLog(
         colors.cyan('│') +
-          colors.gray(' 5. Digite o código gerado acima.                   ') +
-          colors.cyan('│')
+        colors.gray(' 5. Digite o código gerado acima.                   ') +
+        colors.cyan('│')
       );
       boxLog(colors.cyan('╰────────────────────────────────────────────────────╯'));
       console.log('');
@@ -265,11 +265,11 @@ async function iniciarJurandir() {
   }
 
   jurandir.ev.on('messaging-history.set', (set) => {
-    console.log('Messaging history set:', JSON.stringify(set, null, 2));
+    // console.log('Messaging history set:', JSON.stringify(set, null, 2));
   });
 
   jurandir.ev.on('messaging-history.status', (status) => {
-    console.log('Messaging history status:', JSON.stringify(status, null, 2));
+    // console.log('Messaging history status:', JSON.stringify(status, null, 2));
   });
 
   jurandir.ev.on('groups.update', async (updates) => {
@@ -294,24 +294,24 @@ async function iniciarJurandir() {
       boxLog(colors.cyan('╭────────────────────────────────────────────────────╮'));
       boxLog(
         colors.cyan('│') +
-          colors.white('                CONEXÃO VIA QR CODE                 ') +
-          colors.cyan('│')
+        colors.white('                CONEXÃO VIA QR CODE                 ') +
+        colors.cyan('│')
       );
       boxLog(colors.cyan('├────────────────────────────────────────────────────┤'));
       boxLog(
         colors.cyan('│') +
-          colors.gray(' Escaneie o QR Code abaixo com o seu WhatsApp.      ') +
-          colors.cyan('│')
+        colors.gray(' Escaneie o QR Code abaixo com o seu WhatsApp.      ') +
+        colors.cyan('│')
       );
       boxLog(
         colors.cyan('│') +
-          colors.gray(' Caso não tenha outro celular para ler o código,    ') +
-          colors.cyan('│')
+        colors.gray(' Caso não tenha outro celular para ler o código,    ') +
+        colors.cyan('│')
       );
       boxLog(
         colors.cyan('│') +
-          colors.gray(' feche e use a Opção [ 2 ] no Painel Iniciar.       ') +
-          colors.cyan('│')
+        colors.gray(' feche e use a Opção [ 2 ] no Painel Iniciar.       ') +
+        colors.cyan('│')
       );
       boxLog(colors.cyan('╰────────────────────────────────────────────────────╯'));
       console.log('');
