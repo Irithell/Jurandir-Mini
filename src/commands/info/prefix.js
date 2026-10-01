@@ -1,6 +1,6 @@
 export const description = 'Informa qual é o prefixo atual do bot';
 
-export const aliases = ['prefix'];
+export const aliases = ['prefixo'];
 
 export const noPrefixConfig = {
   matchType: 'exact',

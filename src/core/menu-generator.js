@@ -13,8 +13,6 @@ const SUBMENU_TEMPLATE = {
 ╰╔═════════════════════╗
 ╭┤         📦  {{CATEGORY_NAME}}
 ┃╚═════════════════════╝`,
-  commandLine: `┃ 
-┃ {{EMOJI}} {{PREFIX}}{{CMD_NAME}}`,
   footer: `\n╰╔═════════════════════╗
 ╭┤           🐾  {{BOT_NAME}}  🐾
 ╰╚═════════════════════╝`,
@@ -64,12 +62,17 @@ export function generateMenuCommand(category) {
     for (const cmd of commands) {
       const randomEmoji = catEmojis[Math.floor(Math.random() * catEmojis.length)];
 
-      bodyText +=
-        '\n' +
-        SUBMENU_TEMPLATE.commandLine
-          .replace('{{EMOJI}}', randomEmoji)
-          .replace('{{PREFIX}}', prefix)
-          .replace('{{CMD_NAME}}', toUnicodeBoldUpper(cmd.name));
+      const validAliases = (cmd.aliases || []).filter(
+        (alias) => alias && alias.toLowerCase() !== cmd.name.toLowerCase()
+      );
+
+      const aliasLines = validAliases
+        .map((alias) => `┃    → ${prefix}${toUnicodeBoldUpper(alias)}`)
+        .join('\n');
+
+      bodyText += `\n┃ \n┃ ${randomEmoji} ${prefix}${toUnicodeBoldUpper(cmd.name)}${
+        aliasLines ? '\n' + aliasLines : ''
+      }`;
     }
 
     bodyText += SUBMENU_TEMPLATE.footer.replace('{{BOT_NAME}}', botConfig.name.toUpperCase());

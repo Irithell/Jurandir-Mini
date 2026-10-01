@@ -208,9 +208,24 @@ export interface CommandContext {
   [key: string]: any;
 }
 
+export interface CommandMetadata {
+  name: string;
+  category: string;
+  description: string;
+  aliases: string[];
+  isSubmenu?: boolean;
+}
+
+export interface CommandEntry extends CommandMetadata {
+  execute: CommandFunction;
+}
+
 export interface CommandFunction {
   (ctx: CommandContext): Promise<void>;
   category?: string;
   description?: string;
   isAlias?: boolean;
+  name?: string;
+  aliases?: string[];
+  isSubmenu?: boolean;
 }

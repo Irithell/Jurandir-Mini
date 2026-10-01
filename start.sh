@@ -15,7 +15,7 @@ API_URL="https://api.github.com/repos/$REPO/releases"
 DB_PATH="./database/sessions/jurandir.db"
 SPACES=""
 
-trap 'printf "\n\n${SPACES}${GREEN}[ ✓ ]${NOCOLOR} Sistema encerrado, até logo!\n"; exit 0' INT
+trap 'printf "\n\n${GREEN}[ ✓ ]${NOCOLOR} Sistema encerrado, até logo!\n"; exit 0' INT
 
 IS_TERMUX=0
 NPM_FLAG=""
@@ -37,11 +37,11 @@ set_layout() {
   fi
 }
 
-log_info() { printf "${SPACES}${BLUE}[ ℹ ]${NOCOLOR} $1\n"; }
-log_step() { printf "${SPACES}${CYAN}[ ⚙ ]${NOCOLOR} $1\n"; }
-log_succ() { printf "${SPACES}${GREEN}[ ✓ ]${NOCOLOR} $1\n"; }
-log_warn() { printf "${SPACES}${YELLOW}[ ! ]${NOCOLOR} $1\n"; }
-log_err()  { printf "${SPACES}${RED}[ x ]${NOCOLOR} $1\n"; }
+log_info() { printf "${BLUE}[ ℹ ]${NOCOLOR} $1\n"; }
+log_step() { printf "${CYAN}[ ⚙ ]${NOCOLOR} $1\n"; }
+log_succ() { printf "${GREEN}[ ✓ ]${NOCOLOR} $1\n"; }
+log_warn() { printf "${YELLOW}[ ! ]${NOCOLOR} $1\n"; }
+log_err()  { printf "${RED}[ x ]${NOCOLOR} $1\n"; }
 
 show_banner() {
   clear
@@ -53,7 +53,7 @@ show_banner() {
 
 show_install_guide() {
   printf "\n${SPACES}${CYAN}╭───────────────────────────────────────────────────────────────╮${NOCOLOR}\n"
-  printf "${SPACES}${CYAN}│${WHITE}                   INSTRUÇÕES DE INICIALIZAÇÃO                 ${CYAN}│${NOCOLOR}\n"
+  printf "${SPACES}${CYAN}│${WHITE}                  INSTRUÇÕES DE INICIALIZAÇÃO                  ${CYAN}│${NOCOLOR}\n"
   printf "${SPACES}${CYAN}├───────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
   printf "${SPACES}${CYAN}│                                                               │${NOCOLOR}\n"
   printf "${SPACES}${CYAN}│${WHITE}  Atalhos do Gerenciador (start.sh):                           ${CYAN}│${NOCOLOR}\n"
@@ -95,9 +95,9 @@ check_dependencies() {
   
   for cmd in $CHECK_CMDS; do
     if command -v $cmd >/dev/null 2>&1; then
-      printf "${SPACES}${GREEN}[ ✓ ]${NOCOLOR} ${WHITE}${cmd}${NOCOLOR}\n"
+      printf "${GREEN}[ ✓ ]${NOCOLOR} ${WHITE}${cmd}${NOCOLOR}\n"
     else
-      printf "${SPACES}${RED}[ x ]${NOCOLOR} ${GRAY}${cmd} (ausente)${NOCOLOR}\n"
+      printf "${RED}[ x ]${NOCOLOR} ${GRAY}${cmd} (ausente)${NOCOLOR}\n"
       MISSING_CMDS="$MISSING_CMDS $cmd"
       if [ "$cmd" = "node" ]; then
         MISSING_PKGS="$MISSING_PKGS nodejs"
@@ -113,9 +113,9 @@ check_dependencies() {
     SQLITE_COMPILER_PKGS="build-essential clang make python pkg-config sqlite"
     for pkg in $SQLITE_COMPILER_PKGS; do
       if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed"; then
-        printf "${SPACES}${GREEN}[ ✓ ]${NOCOLOR} ${WHITE}${pkg}${NOCOLOR}\n"
+        printf "${GREEN}[ ✓ ]${NOCOLOR} ${WHITE}${pkg}${NOCOLOR}\n"
       else
-        printf "${SPACES}${RED}[ x ]${NOCOLOR} ${GRAY}${pkg} (ausente)${NOCOLOR}\n"
+        printf "${RED}[ x ]${NOCOLOR} ${GRAY}${pkg} (ausente)${NOCOLOR}\n"
         MISSING_CMDS="$MISSING_CMDS $pkg"
         MISSING_PKGS="$MISSING_PKGS $pkg"
       fi
@@ -127,7 +127,7 @@ check_dependencies() {
       if [ "$MODE_SKIP" -eq 1 ] || [ "$MODE_UPDATE" -eq 1 ]; then
         DO_INSTALL="S"
       else
-        printf "\n${SPACES}${YELLOW}Deseja instalar as ferramentas ausentes agora? [ S/n ]: ${NOCOLOR}"
+        printf "\nDeseja instalar as ferramentas ausentes agora? [ S/n ]: "
         read DO_INSTALL
       fi
       
@@ -163,7 +163,7 @@ check_dependencies() {
           ;;
       esac
     else
-      printf "\n${SPACES}${RED}Ferramentas ausentes detectadas. Instale-as manualmente via apt/pacman/yum.${NOCOLOR}\n"
+      printf "\n${RED}Ferramentas ausentes detectadas. Instale-as manualmente via apt/pacman/yum.${NOCOLOR}\n"
       sleep 2
     fi
   fi
@@ -205,7 +205,7 @@ run_npm_install() {
   $INSTALL_CMD > "$TMP_INSTALL_LOG" 2>&1 &
   NPM_PID=$!
 
-  trap 'kill -9 $NPM_PID 2>/dev/null; rm -f "$TMP_INSTALL_LOG"; printf "\n\n${SPACES}${RED}[ x ] Instalação cancelada.${NOCOLOR}\n"; exit 1' INT
+  trap 'kill -9 $NPM_PID 2>/dev/null; rm -f "$TMP_INSTALL_LOG"; printf "\n\n${RED}[ x ] Instalação cancelada.${NOCOLOR}\n"; exit 1' INT
 
   FRAMES="⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏"
   FRAME_IDX=1
@@ -221,9 +221,9 @@ run_npm_install() {
     STATUS_LINE=$(tail -n 5 "$TMP_INSTALL_LOG" 2>/dev/null | grep -v '^[[:space:]]*$' | tail -n 1 | tr -d '\r\n' | sed 's/^[ \t]*//' | cut -c 1-40)
 
     if [ -n "$STATUS_LINE" ]; then
-      printf "\r\033[K${SPACES}${CYAN}[ %s ]${NOCOLOR} ${WHITE}Instalando dependências...${NOCOLOR} ${GRAY}(%ds)${NOCOLOR} ${YELLOW}› %s${NOCOLOR}" "$FRAME" "$ELAPSED" "$STATUS_LINE"
+      printf "\r\033[K${CYAN}[ %s ]${NOCOLOR} ${WHITE}Instalando dependências...${NOCOLOR} ${GRAY}(%ds)${NOCOLOR} ${YELLOW}› %s${NOCOLOR}" "$FRAME" "$ELAPSED" "$STATUS_LINE"
     else
-      printf "\r\033[K${SPACES}${CYAN}[ %s ]${NOCOLOR} ${WHITE}Instalando dependências...${NOCOLOR} ${GRAY}(%ds)${NOCOLOR}" "$FRAME" "$ELAPSED"
+      printf "\r\033[K${CYAN}[ %s ]${NOCOLOR} ${WHITE}Instalando dependências...${NOCOLOR} ${GRAY}(%ds)${NOCOLOR}" "$FRAME" "$ELAPSED"
     fi
 
     sleep 0.1
@@ -234,7 +234,7 @@ run_npm_install() {
   TOTAL_TIME=$(( $(date +%s) - START_TS ))
   printf "\r\033[K"
 
-  trap 'printf "\n\n${SPACES}${GREEN}[ ✓ ]${NOCOLOR} Sistema encerrado, até logo!\n"; exit 0' INT
+  trap 'printf "\n\n${GREEN}[ ✓ ]${NOCOLOR} Sistema encerrado, até logo!\n"; exit 0' INT
 
   if [ "$INSTALL_RES" -eq 0 ]; then
     log_succ "Dependências instaladas com sucesso! ${GRAY}(concluído em ${TOTAL_TIME}s)${NOCOLOR}"
@@ -242,11 +242,11 @@ run_npm_install() {
     return 0
   else
     log_err "Falha na instalação de dependências (Código $INSTALL_RES)."
-    printf "\n${SPACES}${RED}╭───────────────────── LOG DE ERROS ─────────────────────────────╮${NOCOLOR}\n"
+    printf "\n${SPACES}${RED}╭──────────────────────── LOG DE ERROS ─────────────────────────╮${NOCOLOR}\n"
     tail -n 15 "$TMP_INSTALL_LOG" 2>/dev/null | while IFS= read -r l; do
-      printf "${SPACES}${GRAY}│ %-62.62s │${NOCOLOR}\n" "$l"
+      printf "${SPACES}${RED}│${GRAY} %-61.61s ${RED}│${NOCOLOR}\n" "$l"
     done
-    printf "${SPACES}${RED}╰────────────────────────────────────────────────────────────────╯${NOCOLOR}\n\n"
+    printf "${SPACES}${RED}╰───────────────────────────────────────────────────────────────╯${NOCOLOR}\n\n"
     rm -f "$TMP_INSTALL_LOG"
     return $INSTALL_RES
   fi
@@ -256,7 +256,7 @@ create_backup() {
   if [ "$MODE_SKIP" -eq 1 ] || [ "$MODE_UPDATE" -eq 1 ]; then
     DO_BACKUP="S"
   else
-    printf "\n${SPACES}${YELLOW}Deseja criar um backup de segurança? [ S/n ]: ${NOCOLOR}"
+    printf "\n${YELLOW}Deseja criar um backup de segurança? [ S/n ]: ${NOCOLOR}"
     read DO_BACKUP
   fi
   
@@ -349,17 +349,17 @@ check_updates() {
         fi
 
         printf "\n${SPACES}${YELLOW}╭───────────────────────────────────────────────────────────────╮${NOCOLOR}\n"
-        printf "${SPACES}${YELLOW}│ ATUALIZAÇÃO DISPONÍVEL                                        │${NOCOLOR}\n"
+        printf "${SPACES}${YELLOW}│                    ATUALIZAÇÃO DISPONÍVEL                     │${NOCOLOR}\n"
         printf "${SPACES}${YELLOW}├───────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
-        printf "${SPACES}${YELLOW}│ Versão local: ${WHITE}v${LOCAL_VER}${NOCOLOR}\n"
-        printf "${SPACES}${YELLOW}│ Nova versão:  ${GREEN}v${DISPLAY_VER}${NOCOLOR}\n"
+        printf "${SPACES}${YELLOW}│${NOCOLOR}  Versão local: ${WHITE}%-46.46s${NOCOLOR} ${YELLOW}│${NOCOLOR}\n" "v${LOCAL_VER}"
+        printf "${SPACES}${YELLOW}│${NOCOLOR}  Nova versão:  ${GREEN}%-46.46s${NOCOLOR} ${YELLOW}│${NOCOLOR}\n" "v${DISPLAY_VER}"
         printf "${SPACES}${YELLOW}╰───────────────────────────────────────────────────────────────╯${NOCOLOR}\n"
         
         if [ "$MODE_UPDATE" -eq 1 ]; then
           DO_UPDATE="S"
-          printf "\n${SPACES}${CYAN}Atualização automática acionada (--update)...${NOCOLOR}\n"
+          printf "\n${CYAN}Atualização automática acionada (--update)...${NOCOLOR}\n"
         else
-          printf "\n${SPACES}${CYAN}Deseja instalar a atualização agora? [ S/n ]: ${NOCOLOR}"
+          printf "\n${CYAN}Deseja instalar a atualização agora? [ S/n ]: ${NOCOLOR}"
           read DO_UPDATE
         fi
         
@@ -413,7 +413,7 @@ explore_versions() {
       res.on('end', () => {
         try {
           const r = JSON.parse(data);
-          r.forEach((v, i) => console.log(\`${SPACES}\\x1b[36m[\\x1b[32m \${i} \\x1b[36m]\\x1b[0m \\x1b[1;37m\${v.tag_name}\\x1b[0m \\x1b[90m— \${new Date(v.published_at).toLocaleDateString()}\\x1b[0m\`));
+          r.forEach((v, i) => console.log(\`\\x1b[36m[\\x1b[32m \${i} \\x1b[36m]\\x1b[0m \\x1b[1;37m\${v.tag_name}\\x1b[0m \\x1b[90m— \${new Date(v.published_at).toLocaleDateString()}\\x1b[0m\`));
           fs.writeFileSync('.rel_tmp.json', JSON.stringify(r));
         } catch(e) { console.log('ERRO'); }
       });
@@ -422,11 +422,13 @@ explore_versions() {
   
   [ $(grep -c "ERRO" .menu_out) -gt 0 ] && { log_err "Falha de conexão."; rm -f .menu_out .rel_tmp.json; sleep 2; return; }
 
-  printf "\n${SPACES}${YELLOW}=== HISTÓRICO DE VERSÕES ===${NOCOLOR}\n"
+  printf "\n${SPACES}${CYAN}╭───────────────────────────────────────────────────────────────╮${NOCOLOR}\n"
+  printf "${SPACES}${CYAN}│                     HISTÓRICO DE VERSÕES                      │${NOCOLOR}\n"
+  printf "${SPACES}${CYAN}╰───────────────────────────────────────────────────────────────╯${NOCOLOR}\n\n"
   cat .menu_out
   rm -f .menu_out
   
-  printf "\n${SPACES}${CYAN}Digite o NÚMERO da versão (ou deixe vazio para cancelar): ${NOCOLOR}"
+  printf "\n${CYAN}Digite o NÚMERO da versão (ou deixe vazio para cancelar): ${NOCOLOR}"
   read V_INDEX
 
   case "$V_INDEX" in
@@ -436,8 +438,8 @@ explore_versions() {
     *)
       TARGET_TAG=$(node --input-type=module -e "import fs from 'fs'; try { console.log(JSON.parse(fs.readFileSync('.rel_tmp.json'))[ $V_INDEX ].tag_name) } catch(e) {}")
       if [ -n "$TARGET_TAG" ]; then
-        printf "\n${SPACES}${RED}ATENÇÃO: Os arquivos atuais serão substituídos.${NOCOLOR}\n"
-        printf "${SPACES}${YELLOW}Confirmar instalação da versão ${TARGET_TAG}? [ S/n ]: ${NOCOLOR}"
+        printf "\n${RED}ATENÇÃO: Os arquivos atuais serão substituídos.${NOCOLOR}\n"
+        printf "${YELLOW}Confirmar instalação da versão ${TARGET_TAG}? [ S/n ]: ${NOCOLOR}"
         read CONFIRM_DL
         case "$CONFIRM_DL" in
           [sS]|"")
@@ -466,37 +468,39 @@ explore_versions() {
       ;;
   esac
   rm -f .rel_tmp.json
-  printf "\n${SPACES}Pressione ENTER para voltar."
-  read JUNK
+  printf "\n${GRAY}Pressione ENTER para voltar...${NOCOLOR}"
+  read -r JUNK
 }
 
 manage_backups() {
   while :; do
     show_banner
-    printf "${SPACES}${YELLOW}=== GERENCIADOR DE BACKUPS ===${NOCOLOR}\n\n"
+    printf "\n${SPACES}${CYAN}╭───────────────────────────────────────────────────────────────╮${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}│                    GERENCIADOR DE BACKUPS                     │${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}╰───────────────────────────────────────────────────────────────╯${NOCOLOR}\n\n"
     
     if [ ! -d "backups" ] || [ -z "$(ls backups/*.tar.gz 2>/dev/null)" ]; then
       log_warn "Nenhum backup localizado."
-      printf "\n${SPACES}Pressione ENTER para voltar."
-      read JUNK
+      printf "\n${GRAY}Pressione ENTER para voltar...${NOCOLOR}"
+      read -r JUNK
       return
     fi
 
     i=1
     for b in backups/*.tar.gz; do
       [ -e "$b" ] || continue
-      printf "${SPACES}${CYAN}[ %d ]${NOCOLOR} ${WHITE}%s${NOCOLOR} ${GRAY}(%s)${NOCOLOR}\n" "$i" "$(basename "$b")" "$(du -h "$b" | cut -f1)"
+      printf "${CYAN}[ %d ]${NOCOLOR} ${WHITE}%s${NOCOLOR} ${GRAY}(%s)${NOCOLOR}\n" "$i" "$(basename "$b")" "$(du -h "$b" | cut -f1)"
       i=$((i + 1))
     done
     TOTAL=$((i - 1))
 
-    printf "\n${SPACES}${CYAN}[ R ] Restaurar  [ E ] Excluir Único  [ L ] Limpar Tudo  [ 0 ] Voltar${NOCOLOR}\n"
-    printf "${SPACES}${YELLOW}➭ Escolha: ${NOCOLOR}"
+    printf "\n${CYAN}[ R ] Restaurar  [ E ] Excluir Único  [ L ] Limpar Tudo  [ 0 ] Voltar${NOCOLOR}\n"
+    printf "${YELLOW}➭ Escolha: ${NOCOLOR}"
     read B_OPT
 
     case "$B_OPT" in
       [rR])
-        printf "\n${SPACES}${YELLOW}Número do backup: ${NOCOLOR}"
+        printf "\n${YELLOW}Número do backup: ${NOCOLOR}"
         read B_NUM
         case "$B_NUM" in
           ""|*[!0-9]*) log_err "Valor incorreto."; sleep 1 ;;
@@ -509,8 +513,8 @@ manage_backups() {
                 curr=$((curr + 1))
               done
               
-              printf "\n${SPACES}${RED}A restauração substituirá os arquivos atuais.${NOCOLOR}\n"
-              printf "${SPACES}${YELLOW}Confirmar aplicação de $(basename "$TARGET")? [ S/n ]: ${NOCOLOR}"
+              printf "\n${RED}A restauração substituirá os arquivos atuais.${NOCOLOR}\n"
+              printf "${YELLOW}Confirmar aplicação de $(basename "$TARGET")? [ S/n ]: ${NOCOLOR}"
               read CONFIRM
               case "$CONFIRM" in
                 [sS]|"")
@@ -538,7 +542,7 @@ manage_backups() {
         esac
         ;;
       [eE])
-        printf "\n${SPACES}${YELLOW}Número do backup: ${NOCOLOR}"
+        printf "\n${YELLOW}Número do backup: ${NOCOLOR}"
         read B_NUM
         case "$B_NUM" in
           ""|*[!0-9]*) log_err "Valor incorreto."; sleep 1 ;;
@@ -561,7 +565,7 @@ manage_backups() {
         esac
         ;;
       [lL])
-        printf "\n${SPACES}${RED}Apagar todos os backups? [ S/n ]: ${NOCOLOR}"
+        printf "\n${RED}Apagar todos os backups? [ S/n ]: ${NOCOLOR}"
         read CONFIRM
         case "$CONFIRM" in
           [sS]|"")
@@ -587,9 +591,9 @@ start_bot() {
      
      if [ "$MODE_SKIP" -eq 1 ] || [ "$MODE_UPDATE" -eq 1 ]; then
        DO_INSTALL="S"
-       printf "\n${SPACES}${YELLOW}Instalação automática acionada pelas flags...${NOCOLOR}\n"
+       printf "\n${YELLOW}Instalação automática acionada pelas flags...${NOCOLOR}\n"
      else
-       printf "\n${SPACES}${YELLOW}Deseja instalar o bot agora? [ S/n ]: ${NOCOLOR}"
+       printf "\n${YELLOW}Deseja instalar o bot agora? [ S/n ]: ${NOCOLOR}"
        read DO_INSTALL
      fi
      
@@ -607,16 +611,16 @@ start_bot() {
              log_succ "Instalação concluída!"
              show_install_guide
              if [ "$MODE_SKIP" -eq 0 ]; then
-               printf "${SPACES}Pressione ENTER para iniciar o bot..."; read -r JUNK
+               printf "Pressione ENTER para iniciar o bot..."; read -r JUNK
              fi
            else
              log_err "A instalação falhou. Abortando inicialização."
-             if [ "$MODE_SKIP" -eq 0 ]; then printf "\n${SPACES}Pressione ENTER para voltar."; read JUNK; fi
+             if [ "$MODE_SKIP" -eq 0 ]; then printf "\n${GRAY}Pressione ENTER para voltar...${NOCOLOR}"; read -r JUNK; fi
              return
            fi
          else
            log_err "A instalação falhou. Abortando inicialização."
-           if [ "$MODE_SKIP" -eq 0 ]; then printf "\n${SPACES}Pressione ENTER para voltar."; read JUNK; fi
+           if [ "$MODE_SKIP" -eq 0 ]; then printf "\n${GRAY}Pressione ENTER para voltar...${NOCOLOR}"; read -r JUNK; fi
            return
          fi
          ;;
@@ -635,20 +639,20 @@ start_bot() {
 
   if [ "$MISSING_MODULES" -eq 1 ]; then
     log_warn "As dependências do projeto não foram instaladas."
-    printf "\n${SPACES}${YELLOW}Deseja instalar as dependências agora? [ S/n ]: ${NOCOLOR}"
+    printf "\n${YELLOW}Deseja instalar as dependências agora? [ S/n ]: ${NOCOLOR}"
     read DO_INSTALL_DEPS
     case "$DO_INSTALL_DEPS" in
       [sS]|"")
         run_npm_install
         if [ $? -ne 0 ]; then
           log_err "A instalação de dependências falhou. Abortando inicialização."
-          if [ "$MODE_SKIP" -eq 0 ]; then printf "\n${SPACES}Pressione ENTER para voltar."; read JUNK; fi
+          if [ "$MODE_SKIP" -eq 0 ]; then printf "\n${GRAY}Pressione ENTER para voltar...${NOCOLOR}"; read -r JUNK; fi
           return
         fi
         ;;
       *)
         log_err "Não é possível iniciar o bot sem as dependências instaladas."
-        if [ "$MODE_SKIP" -eq 0 ]; then printf "\n${SPACES}Pressione ENTER para voltar."; read JUNK; fi
+        if [ "$MODE_SKIP" -eq 0 ]; then printf "\n${GRAY}Pressione ENTER para voltar...${NOCOLOR}"; read -r JUNK; fi
         return
         ;;
     esac
@@ -696,7 +700,7 @@ start_bot() {
         else
           printf "\n"
           log_err "Falha na compilação do better-sqlite3 via tnode."
-          if [ "$MODE_SKIP" -eq 0 ]; then printf "\n${SPACES}Pressione ENTER para voltar."; read JUNK; fi
+          if [ "$MODE_SKIP" -eq 0 ]; then printf "\n${GRAY}Pressione ENTER para voltar...${NOCOLOR}"; read -r JUNK; fi
           return
         fi
       fi
@@ -724,7 +728,7 @@ start_bot() {
 
     if [ ! -d "node_modules" ]; then
       log_err "Diretório node_modules não encontrado."
-      printf "\n${SPACES}${YELLOW}Deseja instalar as dependências agora? [ S/n ]: ${NOCOLOR}"
+      printf "\n${YELLOW}Deseja instalar as dependências agora? [ S/n ]: ${NOCOLOR}"
       read DO_INSTALL_DEPS
       case "$DO_INSTALL_DEPS" in
         [sS]|"") run_npm_install ;;
@@ -735,6 +739,102 @@ start_bot() {
       sleep 2
     fi
   done
+}
+
+show_system_info() {
+  show_banner
+  printf "\n${SPACES}${CYAN}╭───────────────────────────────────────────────────────────────╮${NOCOLOR}\n"
+  printf "${SPACES}${CYAN}│                INFORMAÇÕES DO SISTEMA E VERSÃO                │${NOCOLOR}\n"
+  printf "${SPACES}${CYAN}╰───────────────────────────────────────────────────────────────╯${NOCOLOR}\n\n"
+
+  LOCAL_VER=$(node --input-type=module -e "import fs from 'fs'; try { console.log(JSON.parse(fs.readFileSync('manifest.json')).version) } catch(e) { try { console.log(JSON.parse(fs.readFileSync('package.json')).version) } catch(e2) { console.log('Desconhecida') } }")
+  BUILD_TS=$(node --input-type=module -e "import fs from 'fs'; try { const t = JSON.parse(fs.readFileSync('manifest.json')).build_time; console.log(t ? new Date(t).toLocaleString() : 'N/A') } catch(e) { console.log('N/A') }")
+  PKG_FILES_COUNT=$(node --input-type=module -e "import fs from 'fs'; try { console.log(Object.keys(JSON.parse(fs.readFileSync('manifest.json')).files || {}).length) } catch(e) { console.log('N/A') }")
+
+  NODE_VER=$(node -v 2>/dev/null || echo "N/A")
+  NPM_VER=$(npm -v 2>/dev/null || echo "N/A")
+  ARCH=$(uname -m 2>/dev/null || echo "Desconhecido")
+
+  RAM_INFO=$(node -e "import os from 'os'; const f = (os.freemem() / (1024**3)).toFixed(1); const t = (os.totalmem() / (1024**3)).toFixed(1); console.log(\`\${f} GB livres de \${t} GB total\`);" 2>/dev/null || echo "N/A")
+
+  BOT_PREFIX=$(node -e "import fs from 'fs'; try { console.log(JSON.parse(fs.readFileSync('src/configs/config.json')).prefix || '!') } catch(e) { console.log('!') }" 2>/dev/null || echo "!")
+  BOT_NAME=$(node -e "import fs from 'fs'; try { console.log(JSON.parse(fs.readFileSync('src/configs/config.json')).name || 'Jurandir Mini') } catch(e) { console.log('Jurandir Mini') }" 2>/dev/null || echo "Jurandir Mini")
+
+  if [ -d "node_modules" ]; then
+    MODULES_STATUS="${GREEN}Instaladas${NOCOLOR}"
+  else
+    MODULES_STATUS="${RED}Não instaladas${NOCOLOR}"
+  fi
+
+  if [ -f "$DB_PATH" ]; then
+    DB_SIZE=$(du -h "$DB_PATH" 2>/dev/null | cut -f1)
+    DB_STATUS="${GREEN}Ativo ($DB_SIZE)${NOCOLOR}"
+    SESSION_CHECK=$(node -e "
+      import Database from 'better-sqlite3';
+      try {
+        const db = new Database('$DB_PATH', { readonly: true });
+        const row = db.prepare('SELECT count(*) as count FROM auth_state').get();
+        console.log(row && row.count > 0 ? 'OK' : 'EMPTY');
+        db.close();
+      } catch(e) { console.log('ERR'); }
+    " 2>/dev/null)
+    if [ "$SESSION_CHECK" = "OK" ]; then
+      SESSION_STATUS="${GREEN}Sessão ativa encontrada (Pronto para iniciar)${NOCOLOR}"
+    elif [ "$SESSION_CHECK" = "EMPTY" ]; then
+      SESSION_STATUS="${YELLOW}Pendente (Requer login via QR Code ou Código)${NOCOLOR}"
+    else
+      SESSION_STATUS="${GRAY}Não foi possível verificar status da sessão${NOCOLOR}"
+    fi
+  else
+    DB_STATUS="${YELLOW}Não inicializado${NOCOLOR}"
+    SESSION_STATUS="${YELLOW}Não autenticado (Requer login)${NOCOLOR}"
+  fi
+
+  BKP_COUNT=$(ls -1 backups/*.tar.gz 2>/dev/null | wc -l)
+
+  REMOTE_INFO=$(curl -sL --max-time 3 "$LATEST_URL/manifest.json" 2>/dev/null)
+  if [ -n "$REMOTE_INFO" ]; then
+    REMOTE_VER=$(node --input-type=module -e "try { console.log(JSON.parse(process.argv[1]).version) } catch(e) { console.log('') }" "$REMOTE_INFO" 2>/dev/null)
+    if [ -n "$REMOTE_VER" ]; then
+      if [ "$REMOTE_VER" = "$LOCAL_VER" ]; then
+        UPDATE_STATUS="${GREEN}Atualizado (v${LOCAL_VER} é a versão mais recente)${NOCOLOR}"
+      else
+        UPDATE_STATUS="${YELLOW}Atualização disponível: v${REMOTE_VER} (Opção 4 ou ./start.sh --update)${NOCOLOR}"
+      fi
+    else
+      UPDATE_STATUS="${GRAY}Não foi possível verificar (resposta remota inválida)${NOCOLOR}"
+    fi
+  else
+    UPDATE_STATUS="${GRAY}Servidor inacessível ou sem conexão com a internet${NOCOLOR}"
+  fi
+
+  printf "${CYAN}● VERSÃO E ATUALIZAÇÕES${NOCOLOR}\n"
+  printf "  ${GRAY}Versão Instalada:${NOCOLOR}   ${WHITE}v%s${NOCOLOR}\n" "$LOCAL_VER"
+  printf "  ${GRAY}Data de Build:${NOCOLOR}      ${WHITE}%s${NOCOLOR}\n" "$BUILD_TS"
+  printf "  ${GRAY}Arquivos no Pacote:${NOCOLOR} ${WHITE}%s${NOCOLOR}\n" "$PKG_FILES_COUNT"
+  printf "  ${GRAY}Canal Oficial:${NOCOLOR}      ${WHITE}GitHub Releases ($REPO)${NOCOLOR}\n"
+  printf "  ${GRAY}Status de Update:${NOCOLOR}   %b\n\n" "$UPDATE_STATUS"
+
+  printf "${CYAN}● DIAGNÓSTICO DO DISPOSITIVO${NOCOLOR}\n"
+  if [ "$IS_TERMUX" -eq 1 ]; then
+    printf "  ${GRAY}Sistema Operacional:${NOCOLOR} ${YELLOW}Android / Termux (%s)${NOCOLOR}\n" "$ARCH"
+  else
+    printf "  ${GRAY}Sistema Operacional:${NOCOLOR} ${WHITE}Linux (%s)${NOCOLOR}\n" "$ARCH"
+  fi
+  printf "  ${GRAY}Memória RAM:${NOCOLOR}        ${WHITE}%s${NOCOLOR}\n" "$RAM_INFO"
+  printf "  ${GRAY}Node.js:${NOCOLOR}            ${WHITE}%s${NOCOLOR}\n" "$NODE_VER"
+  printf "  ${GRAY}NPM:${NOCOLOR}                ${WHITE}%s${NOCOLOR}\n\n" "$NPM_VER"
+
+  printf "${CYAN}● CONFIGURAÇÃO & ESTADO DO BOT${NOCOLOR}\n"
+  printf "  ${GRAY}Nome do Bot:${NOCOLOR}        ${WHITE}%s${NOCOLOR}\n" "$BOT_NAME"
+  printf "  ${GRAY}Prefixo Padrão:${NOCOLOR}     ${WHITE}%s${NOCOLOR}\n" "$BOT_PREFIX"
+  printf "  ${GRAY}Sessão WhatsApp:${NOCOLOR}    %b\n" "$SESSION_STATUS"
+  printf "  ${GRAY}Banco de Dados:${NOCOLOR}     %b\n" "$DB_STATUS"
+  printf "  ${GRAY}Módulos (npm):${NOCOLOR}      %b\n" "$MODULES_STATUS"
+  printf "  ${GRAY}Backups Salvos:${NOCOLOR}     ${WHITE}%d arquivos${NOCOLOR}\n\n" "$BKP_COUNT"
+
+  printf "${GRAY}Pressione ENTER para voltar...${NOCOLOR}"
+  read -r JUNK
 }
 
 show_menu() {
@@ -755,6 +855,9 @@ show_menu() {
     printf "${SPACES}${CYAN}│${RED} [ 9 ]${WHITE} Limpar Sessões SQLite (Preserva Credenciais)            ${CYAN}│${NOCOLOR}\n"
     printf "${SPACES}${CYAN}│${RED} [ 10]${WHITE} Apagar Sessão Completa (Requer novo Login)              ${CYAN}│${NOCOLOR}\n"
     printf "${SPACES}${CYAN}├───────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}│${MAGENTA} [ V ]${WHITE} Informações do Sistema e Versão Atual                   ${CYAN}│${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}│${MAGENTA} [ H ]${WHITE} Instruções de Inicialização e Atalhos                   ${CYAN}│${NOCOLOR}\n"
+    printf "${SPACES}${CYAN}├───────────────────────────────────────────────────────────────┤${NOCOLOR}\n"
     printf "${SPACES}${CYAN}│${RED} [ 0 ]${WHITE} Sair do Script                                          ${CYAN}│${NOCOLOR}\n"
     printf "${SPACES}${CYAN}╰───────────────────────────────────────────────────────────────╯${NOCOLOR}\n\n"
     
@@ -768,7 +871,7 @@ show_menu() {
         check_dependencies
         printf "\n"
         log_warn "Os arquivos locais serão substituídos."
-        printf "${SPACES}${YELLOW}Confirmar Instalação Limpa? [ S/n ]: ${NOCOLOR}"
+        printf "${YELLOW}Confirmar Instalação Limpa? [ S/n ]: ${NOCOLOR}"
         read CONFIRM_DL
         case "$CONFIRM_DL" in
           [sS]|"")
@@ -784,7 +887,7 @@ show_menu() {
                 log_succ "Instalação concluída!"
                 show_install_guide
                 if [ "$MODE_SKIP" -eq 0 ]; then
-                  printf "${SPACES}Pressione ENTER para voltar ao menu..."; read -r JUNK
+                  printf "Pressione ENTER para voltar ao menu..."; read -r JUNK
                 fi
               else
                 log_err "A instalação falhou."
@@ -794,14 +897,14 @@ show_menu() {
             fi
             ;;
         esac
-        printf "\n${SPACES}Pressione ENTER para voltar."
-        read JUNK
+        printf "\n${GRAY}Pressione ENTER para voltar...${NOCOLOR}"
+        read -r JUNK
         ;;
       4) 
         printf "\n"
         check_updates
-        printf "\n${SPACES}Pressione ENTER para voltar."
-        read JUNK
+        printf "\n${GRAY}Pressione ENTER para voltar...${NOCOLOR}"
+        read -r JUNK
         ;;
       5) explore_versions ;;
       6) manage_backups ;;
@@ -813,16 +916,16 @@ show_menu() {
         else
           log_err "Falha na instalação de dependências."
         fi
-        printf "\n${SPACES}Pressione ENTER para voltar."
-        read JUNK
+        printf "\n${GRAY}Pressione ENTER para voltar...${NOCOLOR}"
+        read -r JUNK
         ;;
       8)
         printf "\n"
         log_step "Apagando diretório de módulos..."
         rm -rf node_modules package-lock.json
         log_succ "Concluído!"
-        printf "\n${SPACES}Pressione ENTER para voltar."
-        read JUNK
+        printf "\n${GRAY}Pressione ENTER para voltar...${NOCOLOR}"
+        read -r JUNK
         ;;
       9)
         printf "\n"
@@ -837,18 +940,24 @@ show_menu() {
            $NODE_EXEC -e "import('./src/configs/database.js').then(m => m.dbRun('DELETE FROM auth_keys')).catch(() => process.exit(1));"
            if [ $? -eq 0 ]; then log_succ "Limpeza concluída! Você continua logado."; else log_err "Falha na limpeza."; fi
         fi
-        printf "\n${SPACES}Pressione ENTER para voltar."
-        read JUNK
+        printf "\n${GRAY}Pressione ENTER para voltar...${NOCOLOR}"
+        read -r JUNK
         ;;
       10)
         printf "\n"
         log_step "Apagando banco de dados inteiro..."
         rm -f "$DB_PATH" "${DB_PATH}-wal" "${DB_PATH}-shm"
         log_succ "Sessão apagada com sucesso!"
-        printf "\n${SPACES}Pressione ENTER para voltar."
-        read JUNK
+        printf "\n${GRAY}Pressione ENTER para voltar...${NOCOLOR}"
+        read -r JUNK
         ;;
-      0) printf "\n${SPACES}${GREEN}Finalizando operações...${NOCOLOR}\n"; exit 0 ;;
+      [vV]) show_system_info ;;
+      [hH])
+        show_install_guide
+        printf "\n${GRAY}Pressione ENTER para voltar ao menu...${NOCOLOR}"
+        read -r JUNK
+        ;;
+      0) printf "\n${GREEN}Finalizando operações...${NOCOLOR}\n"; exit 0 ;;
       *) log_err "Opção inválida."; sleep 1 ;;
     esac
   done

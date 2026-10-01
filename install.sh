@@ -80,9 +80,9 @@ echo -e "${BOX_INDENT}${CYAN}│${WHITE}${BOLD}                   JURANDIR MINI 
 echo -e "${BOX_INDENT}${CYAN}╰───────────────────────────────────────────────────────────────╯${RESET}"
 echo ""
 
-log_step() { echo -e "${BOX_INDENT}${CYAN}[ ⚙ ]${RESET} ${WHITE}$1${RESET}"; }
-log_succ() { echo -e "${BOX_INDENT}${GREEN}[ ✓ ]${RESET} ${WHITE}$1${RESET}"; }
-log_err()  { echo -e "${BOX_INDENT}${RED}[ ✗ ]${RESET} ${WHITE}$1${RESET}"; }
+log_step() { echo -e "${CYAN}[ ⚙ ]${RESET} ${WHITE}$1${RESET}"; }
+log_succ() { echo -e "${GREEN}[ ✓ ]${RESET} ${WHITE}$1${RESET}"; }
+log_err()  { echo -e "${RED}[ ✗ ]${RESET} ${WHITE}$1${RESET}"; }
 
 log_step "Conectando ao repositório oficial..."
 sleep 0.4
@@ -102,6 +102,6 @@ if curl -fsSL "$LATEST_URL" -o start.sh; then
   fi
 else
   log_err "Falha ao baixar o arquivo start.sh."
-  echo -e "${BOX_INDENT}${YELLOW}Verifique sua conexão com a internet e tente novamente.${RESET}"
+  echo -e "${YELLOW}Verifique sua conexão com a internet e tente novamente.${RESET}"
   exit 1
 fi
