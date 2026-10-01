@@ -29,8 +29,8 @@ export default async ({
     return;
   }
 
-  if (newName.length > 20) {
-    await errorReply(jurandir, from, toUnicodeBoldUpper('O nome deve ter no máximo 20 caracteres.'), info);
+  if (newName.length > 200) {
+    await errorReply(jurandir, from, toUnicodeBoldUpper('O nome deve ter no máximo 200 caracteres.'), info);
     return;
   }
 

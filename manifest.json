@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "build_time": 1790872455143,
+  "build_time": 1790872493864,
   "files": {
     ".editorconfig": "999c374e129517658aa4fd08a4879fefc20df9717d792153a460ae36afe4904f",
     ".prettierrc": "af43a3ad42a61ed745fc18d44faf9fceec0ee155a4e128487be4ac7569c986de",
@@ -21,7 +21,7 @@
     "src/commands/config-bot/deldono.js": "a9e9c5a4ce62e3a6d080fd50bc959a264d76b9688911f462651a66ea90b44abe",
     "src/commands/config-bot/dono.js": "37d97a88ccba87b8550c630b6b6aaf079468b8aa9fb7b954366bfaa997f3f01a",
     "src/commands/config-bot/setbuttons.js": "20adef3fee50e6e75c6d70c920193afa162d1b87afaeede0a7d98006a7f840b7",
-    "src/commands/config-bot/setname.js": "72ece524304f30f7f75f29aa08ce5bc4187308f8a0ebcce753c287ecbf416861",
+    "src/commands/config-bot/setname.js": "a31a84e094f72f4f25ae6fe9e609bf795d641ef45bdf44296baadb2dc8892bfb",
     "src/commands/config-bot/setprefix.js": "64c6129f247df7700a4d1805b52cf80e13083226a50eb8e59c36c0992fcd93f2",
     "src/commands/geral/ping.js": "cdfd7fa6b8f483f825baa30d5832a84a00a83e02c4991b583a9ae4b3a824857f",
     "src/commands/info/menu.js": "ff096ccd3c2e0b022bc3e24e314aed3723c7bc63b8fecb8111603c2e64c80ae1",
