@@ -81,6 +81,7 @@ async function runNativeFallback(ctx, extractedData) {
         });
 
         extractedData.command = cmdName;
+        ctx.command = cmdName;
         await noPrefixCmd.execute(ctx);
         return;
       }
@@ -107,7 +108,7 @@ export async function handleMessage(jurandir, data) {
     const extractedData = extractMessageData(message, botConfig.prefix);
     if (!extractedData) return;
 
-    const ctx = buildCommandContext(jurandir, extractedData, message);
+    const ctx = await buildCommandContext(jurandir, extractedData, message);
     const { gates, processes } = getChain();
 
     for (const gate of gates) {

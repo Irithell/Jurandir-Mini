@@ -1,5 +1,7 @@
-import { WASocket, WAMessage } from '@whiskeysockets/baileys';
+import { WASocket, WAMessage, GroupMetadata, WAMessageContent } from '@whiskeysockets/baileys';
+import Database from 'better-sqlite3';
 import { InteractivePayload, MediaType } from './buttons';
+import { ExtractedMessageData } from './baileys';
 
 export interface BotConfig {
   name: string;
@@ -26,11 +28,9 @@ export interface CommandUtils {
   logger: any;
   cache: any;
 
-  // ========== PRESENCE ==========
   sendTyping: (jurandir: WASocket, jid: string) => Promise<void>;
   sendRecording: (jurandir: WASocket, jid: string) => Promise<void>;
 
-  // ========== TEXTOS E RESPOSTAS COM QUOTED ==========
   sendText: (jurandir: WASocket, jid: string, text: string, mentions?: string[]) => Promise<any>;
   reply: (
     jurandir: WASocket,
@@ -40,14 +40,12 @@ export interface CommandUtils {
     mentions?: string[]
   ) => Promise<any>;
 
-  // ========== REAÇÕES ==========
   react: (jurandir: WASocket, jid: string, emoji: string, messageKey: any) => Promise<any>;
   successReact: (jurandir: WASocket, jid: string, messageKey: any) => Promise<any>;
   errorReact: (jurandir: WASocket, jid: string, messageKey: any) => Promise<any>;
   waitReact: (jurandir: WASocket, jid: string, messageKey: any) => Promise<any>;
   warningReact: (jurandir: WASocket, jid: string, messageKey: any) => Promise<any>;
 
-  // ========== RESPOSTAS COM REAÇÕES (QUOTED) ==========
   successReply: (
     jurandir: WASocket,
     jid: string,
@@ -73,7 +71,6 @@ export interface CommandUtils {
     quotedMessage: WAMessage
   ) => Promise<void>;
 
-  // ========== MÍDIA COM QUOTED ==========
   sendImage: (
     jurandir: WASocket,
     jid: string,
@@ -123,7 +120,6 @@ export interface CommandUtils {
     displayName: string
   ) => Promise<any>;
 
-  // ========== VERSÕES SEM QUOTED (2) ==========
   sendText2: (jurandir: WASocket, jid: string, text: string, mentions?: string[]) => Promise<any>;
   reply2: (jurandir: WASocket, jid: string, text: string, mentions?: string[]) => Promise<any>;
   successReply2: (
@@ -169,7 +165,6 @@ export interface CommandUtils {
   sendSticker2: (jurandir: WASocket, jid: string, stickerPath: string) => Promise<any>;
   sendStickerFromUrl2: (jurandir: WASocket, jid: string, url: string) => Promise<any>;
 
-  // ========== INTERACTIVE MESSAGES (CAROUSEL) ==========
   sendTextWithMedia: (
     jurandir: WASocket,
     to: string,
@@ -184,17 +179,60 @@ export interface CommandUtils {
 }
 
 export interface CommandContext {
+  sock: WASocket;
+  client: WASocket;
   jurandir: WASocket;
-  from: string;
+  botName: string;
+  prefix: string;
+  config: BotConfig;
+  botConfig: BotConfig;
+  message: WAMessageContent | null;
+  rawMessage: WAMessage;
+  event: WAMessage;
   info: WAMessage;
-  body: string;
+  messageData: ExtractedMessageData;
+  db: Database.Database;
+  from: string;
+  chat: string;
+  userJid: string;
+  sender: string;
+  senderJid: string;
+  clearLid: string;
+  clearJid: string;
+  senderAlt: string;
+  recipientAlt: string;
+  addressingMode: string;
+  formattedSender: string;
+  pushName: string;
+  isOwner: boolean;
+  isAdmin: boolean;
+  isBotAdmin: boolean;
+  isJurandir: boolean;
+  isGroup: boolean;
+  isPrivate: boolean;
+  isNewsletter: boolean;
+  isStatus: boolean;
+  groupMetadata: GroupMetadata | null;
+  groupName: string;
+  groupOwner: string;
+  groupParticipants: any[];
+  messageId: string;
+  timestamp: number;
+  serverId: number;
+  type: string;
+  category: string;
+  mediaType: string;
+  isEphemeral: boolean;
+  isViewOnce: boolean;
+  isEdit: boolean;
+  isBotInvoke: boolean;
+  isFromMe: boolean;
+  isReply: boolean;
+  replyJid: string | null;
   command: string;
   args: string[];
   fullArgs: string;
-  prefix: string;
-  userJid: string;
-  isGroup: boolean;
-  botConfig: BotConfig;
+  body: string;
   os: typeof import('node:os');
   uptime: number;
   ramUsada: number;

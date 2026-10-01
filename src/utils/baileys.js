@@ -236,6 +236,20 @@ function pickMatchedPrefix(body, prefixes) {
 }
 
 /**
+ * @param {string | undefined | null} val
+ * @returns {string}
+ */
+export function cleanNumber(val) {
+  if (!val) return '';
+  let str = String(val);
+  const atIdx = str.indexOf('@');
+  if (atIdx !== -1) str = str.slice(0, atIdx);
+  const colonIdx = str.indexOf(':');
+  if (colonIdx !== -1) str = str.slice(0, colonIdx);
+  return str.trim();
+}
+
+/**
  * @param {WAMessage} message
  * @param {string} fallbackPrefix
  * @returns {ExtractedMessageData}
@@ -243,74 +257,158 @@ function pickMatchedPrefix(body, prefixes) {
 export function extractMessageData(message, fallbackPrefix) {
   const messageContent = detectMessageType(message);
   const body = extractBodyText(message);
-  const key = message.key;
+  const key = message?.key;
+
+  const from = key?.remoteJid || '';
+  const isGroup = from.endsWith('@g.us');
+  const isNewsletter = from.endsWith('@newsletter');
+  const isStatus = from === 'status@broadcast' || from.endsWith('@broadcast');
+  const isPrivate = !isGroup && !isNewsletter && !isStatus;
+
+  const rawSender = isGroup ? (key?.participant || from) : from;
+  const senderClean = rawSender.replace(/:[0-9]+@/, '@');
+  const sender = senderClean || from;
+  const userJid = sender;
+
+  const keyAny = /** @type {any} */ (key || {});
+  const msgAny = /** @type {any} */ (message || {});
+
+  const senderAlt = String(keyAny.participantAlt || keyAny.remoteJidAlt || '');
+  const recipientAlt = String(msgAny.recipientAlt || '');
+  const addressingMode = String(
+    keyAny.addressingMode || msgAny.addressingMode || (sender.endsWith('@lid') ? 'lid' : 'pn')
+  );
+
+  let clearLid = '';
+  let clearJid = '';
+  let senderJid = '';
+
+  if (sender.endsWith('@lid')) {
+    clearLid = cleanNumber(sender);
+    if (senderAlt.endsWith('@s.whatsapp.net')) {
+      clearJid = cleanNumber(senderAlt);
+      senderJid = `${clearJid}@s.whatsapp.net`;
+    } else {
+      clearJid = clearLid;
+      senderJid = `${clearJid}@s.whatsapp.net`;
+    }
+  } else if (sender.endsWith('@s.whatsapp.net')) {
+    clearJid = cleanNumber(sender);
+    senderJid = sender;
+    if (senderAlt.endsWith('@lid')) {
+      clearLid = cleanNumber(senderAlt);
+    }
+  } else if (isNewsletter) {
+    senderJid = sender;
+    clearJid = cleanNumber(sender);
+    clearLid = '';
+  } else {
+    senderJid = sender;
+    clearJid = cleanNumber(sender);
+    if (senderAlt.endsWith('@lid')) {
+      clearLid = cleanNumber(senderAlt);
+    }
+  }
+
+  const contextInfo =
+    message?.message?.extendedTextMessage?.contextInfo ||
+    message?.message?.imageMessage?.contextInfo ||
+    message?.message?.videoMessage?.contextInfo ||
+    message?.message?.documentMessage?.contextInfo ||
+    message?.message?.audioMessage?.contextInfo ||
+    message?.message?.stickerMessage?.contextInfo ||
+    message?.message?.buttonsResponseMessage?.contextInfo ||
+    message?.message?.listResponseMessage?.contextInfo ||
+    message?.message?.templateButtonReplyMessage?.contextInfo ||
+    message?.message?.interactiveResponseMessage?.contextInfo;
+
+  const isReply = Boolean(contextInfo?.quotedMessage);
+  const replyJid = contextInfo?.participant
+    ? contextInfo.participant.replace(/:[0-9]+@/, '@')
+    : null;
+
+  const pushName = message?.pushName || '';
+  const messageId = key?.id || '';
+  const timestamp = message?.messageTimestamp
+    ? Number(message.messageTimestamp)
+    : Math.floor(Date.now() / 1000);
+  const serverId = Number(msgAny.serverId || 0);
+
+  const isViewOnce = messageContent.isViewOnce;
+  const isEphemeral = Boolean(message?.message?.ephemeralMessage);
+  const isEdit = Boolean(
+    message?.message?.protocolMessage?.type === 14 || message?.message?.editedMessage
+  );
+  const isFromMe = Boolean(key?.fromMe);
 
   const emptyReturn = {
     args: [],
     body: '',
     command: '',
-    from: '',
+    from,
     fullArgs: '',
-    isReply: false,
+    isReply,
     prefix: '',
-    replyJid: null,
-    userJid: '',
-    isGroup: false,
+    replyJid,
+    userJid,
+    sender,
+    senderJid,
+    clearLid,
+    clearJid,
+    senderAlt,
+    recipientAlt,
+    addressingMode,
+    formattedSender: userJid,
+    pushName,
+    isGroup,
+    isPrivate,
+    isNewsletter,
+    isStatus,
+    messageId,
+    timestamp,
+    serverId,
+    isEphemeral,
+    isViewOnce,
+    isEdit,
+    isBotInvoke: false,
+    isFromMe,
+    category: String(msgAny.category || ''),
+    mediaType: messageContent.type !== 'text' ? messageContent.type : '',
     messageType: messageContent.type,
     messageContent,
     rawMessage: message,
   };
 
-  if (!key) return emptyReturn;
-
-  const from = key.remoteJid || '';
-  const isGroup = from.endsWith('@g.us');
-  const userJid = key.participant?.replace(/:[ 0-9 ]{1,2}/g, '') || from;
-
-  const isReply =
-    !!message.message?.extendedTextMessage?.contextInfo?.quotedMessage ||
-    !!message.message?.imageMessage?.contextInfo?.quotedMessage ||
-    !!message.message?.videoMessage?.contextInfo?.quotedMessage;
-
-  const replyJid =
-    message.message?.extendedTextMessage?.contextInfo?.participant ||
-    message.message?.imageMessage?.contextInfo?.participant ||
-    message.message?.videoMessage?.contextInfo?.participant ||
-    null;
-
-  if (!body) return { ...emptyReturn, from, userJid, isGroup, isReply, replyJid };
+  if (!key || !body) return emptyReturn;
 
   const bodyString = String(body);
   const matchedPrefix = pickMatchedPrefix(bodyString, [fallbackPrefix]);
 
-  if (!matchedPrefix)
-    return { ...emptyReturn, body: bodyString, from, userJid, isGroup, isReply, replyJid };
+  if (!matchedPrefix) {
+    return { ...emptyReturn, body: bodyString };
+  }
 
   const afterPrefix = bodyString.slice(matchedPrefix.length).trim();
-  if (!afterPrefix)
-    return { ...emptyReturn, body: bodyString, from, userJid, isGroup, isReply, replyJid };
+  if (!afterPrefix) {
+    return { ...emptyReturn, body: bodyString, prefix: matchedPrefix };
+  }
 
   const parts = afterPrefix.split(' ');
   const command = parts[0]?.toLowerCase().trim() || '';
   const args = parts.slice(1);
 
-  if (!command)
-    return { ...emptyReturn, body: bodyString, from, userJid, isGroup, isReply, replyJid };
+  if (!command) {
+    return { ...emptyReturn, body: bodyString, prefix: matchedPrefix };
+  }
 
   return {
+    ...emptyReturn,
     args,
     body: bodyString,
     command,
-    from,
     fullArgs: args.join(' '),
-    isReply,
+    isBotInvoke: true,
     prefix: matchedPrefix,
-    replyJid,
-    userJid,
-    isGroup,
-    messageType: messageContent.type,
-    messageContent,
-    rawMessage: message,
   };
 }
 
