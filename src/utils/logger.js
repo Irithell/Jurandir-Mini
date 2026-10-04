@@ -1,10 +1,5 @@
 import { Chalk } from 'chalk';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import moment from 'moment-timezone';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 /**
  * @typedef {import('@/types/logger.d.ts').LogPayload} LogPayload

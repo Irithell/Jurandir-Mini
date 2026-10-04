@@ -37,7 +37,7 @@ export default async ({
   from,
   info,
   prefix,
-  utils: { react, toUnicodeBoldUpper, sendButton, sendTextWithMedia },
+  utils: { react, toUnicodeBoldUpper, sendButton, sendImage },
   botConfig,
 }) => {
   const startTime = Date.now();
@@ -98,7 +98,7 @@ ${textMenuLines}
 ╭┤           🐱  ${botName}  🐱
 ╰╚═════════════════════╝`;
 
-    await sendTextWithMedia(jurandir, from, bannerUrl, 'image', textBody, info);
+    await sendImage(jurandir, from, bannerUrl, textBody, info);
     return;
   }
 

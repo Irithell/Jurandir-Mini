@@ -1,6 +1,6 @@
 import { WASocket, WAMessage, GroupMetadata, WAMessageContent } from '@whiskeysockets/baileys';
 import Database from 'better-sqlite3';
-import { InteractivePayload, MediaType } from './buttons';
+import { InteractivePayload } from './buttons';
 import { ExtractedMessageData } from './baileys';
 
 export interface BotConfig {
@@ -24,83 +24,95 @@ export interface CommandUtils {
   formatUptime: (milliseconds: number) => string;
   formatBytes: (bytes: number) => string;
   toUnicodeBoldUpper: (text: string) => string;
+  wrapTextForDecoration: (text?: string | null, maxChars?: number, prefix?: string) => string;
+  wrapQuotedText: (text?: string | null, maxChars?: number) => string;
+  wrapPatternDecoration: (text?: string | null, maxChars?: number) => string;
+  wrapBracketText: (text?: string | null, maxChars?: number) => string;
+  wrapBracketDecoration: (text?: string | null, maxChars?: number) => string;
 
   logger: any;
   cache: any;
 
-  sendTyping: (jurandir: WASocket, jid: string) => Promise<void>;
-  sendRecording: (jurandir: WASocket, jid: string) => Promise<void>;
+  sendTyping: (jurandir: WASocket, from: string) => Promise<void>;
+  sendRecording: (jurandir: WASocket, from: string) => Promise<void>;
 
-  sendText: (jurandir: WASocket, jid: string, text: string, mentions?: string[]) => Promise<any>;
+  sendText: (jurandir: WASocket, from: string, text: string, mentions?: string[]) => Promise<any>;
   reply: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     text: string,
     quotedMessage: WAMessage,
     mentions?: string[]
   ) => Promise<any>;
 
-  react: (jurandir: WASocket, jid: string, emoji: string, messageKey: any) => Promise<any>;
-  successReact: (jurandir: WASocket, jid: string, messageKey: any) => Promise<any>;
-  errorReact: (jurandir: WASocket, jid: string, messageKey: any) => Promise<any>;
-  waitReact: (jurandir: WASocket, jid: string, messageKey: any) => Promise<any>;
-  warningReact: (jurandir: WASocket, jid: string, messageKey: any) => Promise<any>;
+  react: (jurandir: WASocket, from: string, emoji: string, messageKey: any) => Promise<any>;
+  successReact: (jurandir: WASocket, from: string, messageKey: any) => Promise<any>;
+  errorReact: (jurandir: WASocket, from: string, messageKey: any) => Promise<any>;
+  waitReact: (jurandir: WASocket, from: string, messageKey: any) => Promise<any>;
+  warningReact: (jurandir: WASocket, from: string, messageKey: any) => Promise<any>;
 
   successReply: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     text: string,
     quotedMessage: WAMessage
   ) => Promise<void>;
   errorReply: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     text: string,
     quotedMessage: WAMessage
   ) => Promise<void>;
   waitReply: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     text: string,
     quotedMessage: WAMessage
   ) => Promise<void>;
   warningReply: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     text: string,
     quotedMessage: WAMessage
   ) => Promise<void>;
 
   sendImage: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     imagePath: string,
     caption?: string,
     quotedMessage?: WAMessage
   ) => Promise<any>;
   sendVideo: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     videoPath: string,
     caption?: string,
-    quotedMessage?: WAMessage
+    quotedMessage?: WAMessage,
+    gifPlayback?: boolean
   ) => Promise<any>;
-  sendAudio: (jurandir: WASocket, jid: string, audioPath: string, ptt?: boolean) => Promise<any>;
+  sendAudio: (
+    jurandir: WASocket,
+    from: string,
+    audioPath: string,
+    ptt?: boolean,
+    mimetype?: string
+  ) => Promise<any>;
   sendSticker: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     stickerPath: string,
     quotedMessage?: WAMessage
   ) => Promise<any>;
   sendStickerFromUrl: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     url: string,
     quotedMessage?: WAMessage
   ) => Promise<any>;
   sendDocument: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     documentPath: string,
     fileName: string,
     mimetype: string,
@@ -108,72 +120,65 @@ export interface CommandUtils {
   ) => Promise<any>;
   sendLocation: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     latitude: number,
     longitude: number,
     name?: string
   ) => Promise<any>;
   sendContact: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     contactJid: string,
     displayName: string
   ) => Promise<any>;
 
-  sendText2: (jurandir: WASocket, jid: string, text: string, mentions?: string[]) => Promise<any>;
-  reply2: (jurandir: WASocket, jid: string, text: string, mentions?: string[]) => Promise<any>;
+  sendText2: (jurandir: WASocket, from: string, text: string, mentions?: string[]) => Promise<any>;
+  reply2: (jurandir: WASocket, from: string, text: string, mentions?: string[]) => Promise<any>;
   successReply2: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     text: string,
     messageKey: any,
     mentions?: string[]
   ) => Promise<void>;
   errorReply2: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     text: string,
     messageKey: any,
     mentions?: string[]
   ) => Promise<void>;
   waitReply2: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     text: string,
     messageKey: any,
     mentions?: string[]
   ) => Promise<void>;
   warningReply2: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     text: string,
     messageKey: any,
     mentions?: string[]
   ) => Promise<void>;
   sendImage2: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     imagePath: string,
     caption?: string
   ) => Promise<any>;
   sendVideo2: (
     jurandir: WASocket,
-    jid: string,
+    from: string,
     videoPath: string,
-    caption?: string
-  ) => Promise<any>;
-  sendSticker2: (jurandir: WASocket, jid: string, stickerPath: string) => Promise<any>;
-  sendStickerFromUrl2: (jurandir: WASocket, jid: string, url: string) => Promise<any>;
-
-  sendTextWithMedia: (
-    jurandir: WASocket,
-    to: string,
-    mediaUrl: string,
-    mediaType: MediaType,
     caption?: string,
-    quotedMessage?: WAMessage
-  ) => Promise<void>;
-  sendButton: (jurandir: WASocket, to: string, payload: InteractivePayload) => Promise<void>;
+    gifPlayback?: boolean
+  ) => Promise<any>;
+  sendSticker2: (jurandir: WASocket, from: string, stickerPath: string) => Promise<any>;
+  sendStickerFromUrl2: (jurandir: WASocket, from: string, url: string) => Promise<any>;
+
+  sendButton: (jurandir: WASocket, from: string, payload: InteractivePayload) => Promise<any>;
 
   [key: string]: any;
 }

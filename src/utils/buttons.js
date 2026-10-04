@@ -386,10 +386,10 @@ export async function buildCarouselHeader(sock, card) {
 
 /**
  * @param {WASocket} sock
- * @param {string} to
+ * @param {string} from
  * @param {InteractivePayload} payload
  */
-export async function sendButton(sock, to, payload) {
+export async function sendButton(sock, from, payload) {
   if (!payload.cards || payload.cards.length === 0) {
     throw new Error('É necessário fornecer ao menos um card no payload.');
   }
@@ -404,6 +404,63 @@ export async function sendButton(sock, to, payload) {
     throw new Error(
       'Carrosséis não suportam a renderização de documentos. Utilize imagens ou vídeos.'
     );
+  }
+
+  if (
+    buttonMode === 0 ||
+    (!isCarousel && (!payload.cards[0]?.buttons || payload.cards[0].buttons.length === 0))
+  ) {
+    const card = payload.cards[0];
+    if (!card) {
+      throw new Error('Card indefinido ou inválido no payload.');
+    }
+
+    const header = card.header;
+    const isVideo = header?.mediaType === 'video';
+    const isDocument = header?.mediaType === 'document';
+    const mediaSource = header?.mediaBuffer
+      ? header.mediaBuffer
+      : header?.mediaPath
+        ? { url: header.mediaPath }
+        : header?.mediaUrl
+          ? { url: header.mediaUrl }
+          : undefined;
+
+    const caption = card.body || payload.bodyText || '';
+
+    /** @type {Record<string, any>} */
+    let messageContent;
+    if (mediaSource) {
+      if (isDocument) {
+        messageContent = {
+          document: mediaSource,
+          fileName: header?.fileName || 'document.bin',
+          mimetype: header?.mimetype || 'application/octet-stream',
+          caption,
+        };
+      } else if (isVideo) {
+        messageContent = {
+          video: mediaSource,
+          caption,
+          gifPlayback: header?.isGif || false,
+        };
+      } else {
+        messageContent = {
+          image: mediaSource,
+          caption,
+        };
+      }
+    } else {
+      messageContent = { text: caption };
+    }
+
+    const contextInfo = buildContextInfo(payload.quotedMessage, payload.mentions);
+    if (contextInfo) {
+      messageContent.contextInfo = contextInfo;
+    }
+
+    const options = payload.quotedMessage ? { quoted: payload.quotedMessage } : undefined;
+    return await sock.sendMessage(from, messageContent, options);
   }
 
   const manager = getInteractiveManager(sock);
@@ -464,7 +521,7 @@ export async function sendButton(sock, to, payload) {
       legacyPayload.contextInfo = contextInfo;
     }
 
-    return await manager.sendLegacyButtons(to, /** @type {any} */(legacyPayload), {});
+    return await manager.sendLegacyButtons(from, /** @type {any} */ (legacyPayload), {});
   }
 
   if (!isCarousel) {
@@ -481,7 +538,7 @@ export async function sendButton(sock, to, payload) {
       title: card.header?.title,
       text: card.body,
       footer: card.footer,
-      interactiveButtons: card.buttons.map(translateButtonToNative),
+      interactiveButtons: (card.buttons || []).map(translateButtonToNative),
     };
 
     if (payload.messageParamsJson) {
@@ -531,7 +588,7 @@ export async function sendButton(sock, to, payload) {
       }
     }
 
-    return await manager.sendInteractiveMessage(to, pluginPayload);
+    return await manager.sendInteractiveMessage(from, pluginPayload);
   } else {
     const cardPromises = payload.cards.map(async (card) => {
       const { headerObj, headerType } = await buildCarouselHeader(sock, card);
@@ -571,7 +628,7 @@ export async function sendButton(sock, to, payload) {
     }
 
     return await sock.relayMessage(
-      to,
+      from,
       {
         interactiveMessage: interactiveMsgObj,
       },

@@ -187,3 +187,40 @@ export function wrapQuotedText(text, maxChars = 25) {
     })
     .join('\n');
 }
+
+/**
+ * @param {string | undefined | null} text
+ * @param {number} [maxChars=28]
+ * @returns {string}
+ */
+export function wrapPatternDecoration(text, maxChars = 28) {
+  if (!text) return '';
+
+  const lines = splitIntoLines(text, maxChars);
+  if (lines.length === 0) return '';
+
+  const result = [];
+  const chunkSize = 3;
+
+  for (let i = 0; i < lines.length; i += chunkSize) {
+    const chunk = lines.slice(i, i + chunkSize);
+    if (chunk.length === 1) {
+      result.push('╭┤');
+      result.push(chunk[0] ? `╰╮ ${chunk[0]}` : '╰╮');
+      result.push('╭┤');
+    } else if (chunk.length === 2) {
+      result.push(chunk[0] ? `╭┤ ${chunk[0]}` : '╭┤');
+      result.push(chunk[1] ? `╰╮ ${chunk[1]}` : '╰╮');
+      result.push('╭┤');
+    } else {
+      result.push(chunk[0] ? `╭┤ ${chunk[0]}` : '╭┤');
+      result.push(chunk[1] ? `╰╮ ${chunk[1]}` : '╰╮');
+      result.push(chunk[2] ? `╭┤ ${chunk[2]}` : '╭┤');
+    }
+  }
+
+  return result.join('\n');
+}
+
+export const wrapBracketText = wrapPatternDecoration;
+export const wrapBracketDecoration = wrapPatternDecoration;

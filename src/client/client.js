@@ -264,12 +264,12 @@ async function iniciarJurandir() {
     discardLogs = false;
   }
 
-  jurandir.ev.on('messaging-history.set', (set) => {
-    // console.log('Messaging history set:', JSON.stringify(set, null, 2));
+  jurandir.ev.on('messaging-history.set', (_set) => {
+    // console.log('Messaging history set:', JSON.stringify(_set, null, 2));
   });
 
-  jurandir.ev.on('messaging-history.status', (status) => {
-    // console.log('Messaging history status:', JSON.stringify(status, null, 2));
+  jurandir.ev.on('messaging-history.status', (_status) => {
+    // console.log('Messaging history status:', JSON.stringify(_status, null, 2));
   });
 
   jurandir.ev.on('groups.update', async (updates) => {

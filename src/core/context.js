@@ -83,7 +83,6 @@ export async function buildCommandContext(jurandir, extractedData, rawMessage) {
     }
   }
 
-  // Detect if message is from the bot itself
   const botIdClean = jurandir?.user?.id ? jurandir.user.id.replace(/:[0-9]+@/, '@') : '';
   const userAny = /** @type {any} */ (jurandir?.user || {});
   const botLidClean = userAny.lid ? userAny.lid.replace(/:[0-9]+@/, '@') : '';
@@ -102,7 +101,6 @@ export async function buildCommandContext(jurandir, extractedData, rawMessage) {
     }
   }
 
-  // Owner check
   const isOwnerUser =
     isJurandir ||
     isOwner(userJid, botConfig.owner.phones) ||

@@ -28,7 +28,7 @@ export function generateMenuCommand(category) {
     from,
     info,
     prefix,
-    utils: { react, sendTextWithMedia, toUnicodeBoldUpper },
+    utils: { react, sendImage, toUnicodeBoldUpper },
     botConfig,
   }) => {
     const startTime = Date.now();
@@ -78,6 +78,6 @@ export function generateMenuCommand(category) {
     bodyText += SUBMENU_TEMPLATE.footer.replace('{{BOT_NAME}}', botConfig.name.toUpperCase());
 
     const headerImage = botConfig.assets.primary.headerImage;
-    await sendTextWithMedia(jurandir, from, headerImage, 'image', bodyText, info);
+    await sendImage(jurandir, from, headerImage, bodyText, info);
   };
 }

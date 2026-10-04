@@ -20,9 +20,6 @@ const PROTECTED_FILES = ['start.sh', 'install.sh', 'scripts/updater.mjs'];
 const args = process.argv.slice(2);
 const action = args[0] || 'check';
 
-function logInfo(msg) {
-  console.log(`\x1b[36m[ i ]\x1b[0m ${msg}`);
-}
 function logStep(msg) {
   console.log(`\x1b[36m[ ⚙ ]\x1b[0m ${msg}`);
 }
@@ -62,7 +59,7 @@ function fetchJson(url) {
         res.on('end', () => {
           try {
             resolve(JSON.parse(data));
-          } catch (e) {
+          } catch {
             reject(new Error('Falha de Parse JSON'));
           }
         });
