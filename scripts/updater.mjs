@@ -20,22 +20,48 @@ const PROTECTED_FILES = ['start.sh', 'install.sh', 'scripts/updater.mjs'];
 const args = process.argv.slice(2);
 const action = args[0] || 'check';
 
+/**
+ * @param {string} msg
+ */
 function logStep(msg) {
   console.log(`\x1b[36m[ ⚙ ]\x1b[0m ${msg}`);
 }
+
+/**
+ * @param {string} msg
+ */
 function logSuccess(msg) {
   console.log(`\x1b[32m[ ✓ ]\x1b[0m ${msg}`);
 }
+
+/**
+ * @param {string} msg
+ */
 function logWarn(msg) {
   console.log(`\x1b[33m[ ! ]\x1b[0m ${msg}`);
 }
+
+/**
+ * @param {string} msg
+ */
 function logError(msg) {
   console.log(`\x1b[31m[ x ]\x1b[0m ${msg}`);
 }
+
+/**
+ * @param {string} color
+ * @param {string} icon
+ * @param {string} file
+ * @param {string} [extra='']
+ */
 function logItem(color, icon, file, extra = '') {
   console.log(`  \x1b[${color}m[ ${icon} ]\x1b[0m ${file} ${extra}`);
 }
 
+/**
+ * @param {string} question
+ * @returns {Promise<boolean>}
+ */
 function promptConfirm(question) {
   return new Promise((resolve) => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -46,14 +72,19 @@ function promptConfirm(question) {
   });
 }
 
+/**
+ * @param {string} url
+ * @returns {Promise<any>}
+ */
 function fetchJson(url) {
   return new Promise((resolve, reject) => {
     https
       .get(url, { headers: { 'User-Agent': 'Jurandir' } }, (res) => {
-        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        const statusCode = res.statusCode || 0;
+        if (statusCode >= 300 && statusCode < 400 && res.headers.location) {
           return fetchJson(res.headers.location).then(resolve).catch(reject);
         }
-        if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
+        if (statusCode !== 200) return reject(new Error(`HTTP ${statusCode}`));
         let data = '';
         res.on('data', (c) => (data += c));
         res.on('end', () => {
@@ -68,14 +99,20 @@ function fetchJson(url) {
   });
 }
 
+/**
+ * @param {string} url
+ * @param {string} dest
+ * @returns {Promise<void>}
+ */
 function downloadTar(url, dest) {
   return new Promise((resolve, reject) => {
     https
       .get(url, { headers: { 'User-Agent': 'Jurandir' } }, (res) => {
-        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        const statusCode = res.statusCode || 0;
+        if (statusCode >= 300 && statusCode < 400 && res.headers.location) {
           return downloadTar(res.headers.location, dest).then(resolve).catch(reject);
         }
-        if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
+        if (statusCode !== 200) return reject(new Error(`HTTP ${statusCode}`));
         const file = fs.createWriteStream(dest);
         res.pipe(file);
         file.on('finish', () => {
@@ -90,6 +127,10 @@ function downloadTar(url, dest) {
   });
 }
 
+/**
+ * @param {string} filePath
+ * @returns {string}
+ */
 function getFileHash(filePath) {
   return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 }
@@ -102,6 +143,7 @@ async function performUpdate(forceAll = false, isReinstall = false) {
   try {
     const remoteManifest = await fetchJson(RAW_MANIFEST_URL);
     const localManifestPath = path.join(ROOT_DIR, 'manifest.json');
+    /** @type {{ version?: string, build_time?: string, files: Record<string, string> }} */
     let localManifest = { files: {} };
 
     if (fs.existsSync(localManifestPath)) {
@@ -252,10 +294,10 @@ async function performUpdate(forceAll = false, isReinstall = false) {
     logSuccess('Build aplicado e sincronizado com sucesso.');
     logWarn(`Modificações: ${appliedCount} aplicados | ${deletedCount} descartados`);
     process.exit(0);
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     cleanTemp();
     console.log('');
-    logError(error.message);
+    logError(error?.message || String(error));
     process.exit(1);
   }
 }

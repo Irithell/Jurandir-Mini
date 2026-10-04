@@ -59,7 +59,7 @@ async function runNativeFallback(ctx, extractedData) {
     for (const [cmdName, noPrefixCmd] of noPrefixRegistry.entries()) {
       const { matchType, triggers } = noPrefixCmd.config;
 
-      const isMatched = triggers.some((trigger) => {
+      const isMatched = triggers.some((/** @type {string} */ trigger) => {
         if (matchType === 'exact') return normalizedBody === trigger;
         if (matchType === 'startsWith') return normalizedBody.startsWith(trigger);
         if (matchType === 'includes') return normalizedBody.includes(trigger);

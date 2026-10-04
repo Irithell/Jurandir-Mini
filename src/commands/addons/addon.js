@@ -30,10 +30,15 @@ const sessions = new Map();
 
 /**
  * @param {string} from
+ * @returns {{ category?: string, bundlePath?: string }}
  */
 function getSession(from) {
-  if (!sessions.has(from)) sessions.set(from, {});
-  return sessions.get(from);
+  let session = sessions.get(from);
+  if (!session) {
+    session = {};
+    sessions.set(from, session);
+  }
+  return session;
 }
 
 /**
@@ -45,6 +50,9 @@ function getImage(obj, botConfig) {
   return obj?.image || botConfig.assets.primary.headerImage;
 }
 
+/**
+ * @returns {Promise<any>}
+ */
 async function fetchRegistry() {
   const res = await fetch(`${ADDONS_RAW_BASE}/registry.json`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -53,6 +61,7 @@ async function fetchRegistry() {
 
 /**
  * @param {string} bundlePath
+ * @returns {Promise<any>}
  */
 async function fetchBundleJson(bundlePath) {
   const res = await fetch(`${ADDONS_RAW_BASE}/${bundlePath}/bundle.json`);
@@ -62,6 +71,7 @@ async function fetchBundleJson(bundlePath) {
 
 /**
  * @param {string} addonPath
+ * @returns {Promise<any>}
  */
 async function fetchManifest(addonPath) {
   const res = await fetch(`${ADDONS_RAW_BASE}/${addonPath}/manifest.json`);
@@ -157,7 +167,7 @@ async function showBrowse(ctx) {
     return;
   }
 
-  const rows = registry.categories.map((cat) => ({
+  const rows = registry.categories.map((/** @type {any} */ cat) => ({
     id: `${prefix}addon_cat ${cat.name}`,
     title: toUnicodeBoldUpper(`${cat.emoji} ${cat.displayName}`),
     description: toUnicodeBoldUpper(
@@ -227,22 +237,22 @@ async function showCategory(ctx) {
     return;
   }
 
-  const category = registry.categories.find((c) => c.name === categoryName);
+  const category = registry.categories.find((/** @type {any} */ c) => c.name === categoryName);
   if (!category) return;
 
   const installedNames = new Set(
     addonDbAll(`SELECT name FROM addons WHERE status = 'done'`).map((r) => r.name)
   );
 
-  const bundles = category.items.filter((i) => i.type === 'bundle');
-  const standalone = category.items.filter((i) => i.type !== 'bundle');
+  const bundles = category.items.filter((/** @type {any} */ i) => i.type === 'bundle');
+  const standalone = category.items.filter((/** @type {any} */ i) => i.type !== 'bundle');
   const sections = [];
 
   if (bundles.length) {
     sections.push({
       title: toUnicodeBoldUpper('BUNDLES'),
       highlight_label: toUnicodeBoldUpper('📦 PACOTE'),
-      rows: bundles.map((item) => ({
+      rows: bundles.map((/** @type {any} */ item) => ({
         id: `${prefix}addon_bundle ${item.path}`,
         title: toUnicodeBoldUpper(item.displayName),
         description: toUnicodeBoldUpper(`${item.componentCount} addons`),
@@ -254,7 +264,7 @@ async function showCategory(ctx) {
     sections.push({
       title: toUnicodeBoldUpper('ADDONS INDIVIDUAIS'),
       highlight_label: toUnicodeBoldUpper('🔧 ADDON'),
-      rows: standalone.map((item) => ({
+      rows: standalone.map((/** @type {any} */ item) => ({
         id: `${prefix}addon_detail ${item.path}`,
         title: toUnicodeBoldUpper(
           `${installedNames.has(item.name) ? '✅ ' : ''}${item.displayName}`
@@ -312,7 +322,7 @@ async function showBundle(ctx) {
   try {
     bundle = await fetchBundleJson(bundlePath);
     componentManifests = await Promise.all(
-      bundle.components.map((comp) => fetchManifest(`${bundlePath}/${comp}`))
+      bundle.components.map((/** @type {any} */ comp) => fetchManifest(`${bundlePath}/${comp}`))
     );
   } catch {
     await errorReply(
@@ -577,11 +587,12 @@ async function startInstall(ctx) {
   let progressText = 'Iniciando instalação...';
   let stopped = false;
 
-  const { key: msgKey } = await jurandir.sendMessage(
+  const sentMsg = await jurandir.sendMessage(
     from,
     { text: toUnicodeBoldUpper(`> ⚙️ ${progressText}`) },
     { quoted: info }
   );
+  const msgKey = sentMsg?.key;
 
   (async () => {
     while (!stopped) {
@@ -638,11 +649,12 @@ async function startUpdate(ctx) {
   let progressText = `Iniciando atualização de ${addonName}...`;
   let stopped = false;
 
-  const { key: msgKey } = await jurandir.sendMessage(
+  const sentMsg = await jurandir.sendMessage(
     from,
     { text: toUnicodeBoldUpper(`> 🔄 ${progressText}`) },
     { quoted: info }
   );
+  const msgKey = sentMsg?.key;
 
   (async () => {
     while (!stopped) {
@@ -935,6 +947,6 @@ export default async (ctx) => {
     addon_status: showStatus,
   };
 
-  const handler = handlers[command];
+  const handler = /** @type {Record<string, any>} */ (handlers)[command];
   if (handler) await handler(ctx);
 };

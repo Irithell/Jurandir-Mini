@@ -38,7 +38,7 @@ export default async ({
 
   let result;
   try {
-    const [data] = await jurandir.onWhatsApp(number);
+    const [data] = (await jurandir.onWhatsApp(number)) || [];
     result = data;
   } catch {
     await errorReply(jurandir, from, toUnicodeBoldUpper('Falha ao consultar o número no WhatsApp.'), info);
@@ -54,14 +54,17 @@ export default async ({
   const phones = config.owner.phones;
   const jidId = result.jid.split('@')[0];
 
-  const alreadyExists = phones.some((p) => p.split('@')[0] === jidId);
+  const alreadyExists = phones.some((/** @type {string} */ p) => p.split('@')[0] === jidId);
   if (alreadyExists) {
     await errorReply(jurandir, from, toUnicodeBoldUpper('Este número já é dono do bot.'), info);
     return;
   }
 
   phones.push(result.jid);
-  phones.push(result.lid);
+  const resultAny = /** @type {any} */ (result);
+  if (resultAny.lid) {
+    phones.push(resultAny.lid);
+  }
   config.owner.phones = phones;
   writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
 

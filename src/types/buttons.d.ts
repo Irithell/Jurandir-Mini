@@ -1,4 +1,4 @@
-import { proto, WASocket } from '@whiskeysockets/baileys';
+import { proto, WASocket, WAMessage } from '@whiskeysockets/baileys';
 
 export type MediaType = 'image' | 'video' | 'document';
 
@@ -274,7 +274,7 @@ export interface InteractivePayload {
   messageParams?: MessageParamsConfig;
   messageParamsJson?: string | Record<string, any>;
   cards: Array<InteractiveCard>;
-  quotedMessage?: proto.IWebMessageInfo;
+  quotedMessage?: WAMessage;
   mentions?: Array<string>;
 }
 

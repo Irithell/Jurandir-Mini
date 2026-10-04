@@ -219,13 +219,21 @@ export async function sendVideo(jurandir, from, videoSource, caption, quotedMess
 /**
  * @param {WASocket} jurandir
  * @param {string} from
- * @param {string} audioPath
+ * @param {string | Buffer} audioSource
  * @param {boolean} [ptt=false]
  * @param {string} [mimetype]
  */
-export async function sendAudio(jurandir, from, audioPath, ptt = false, mimetype) {
+export async function sendAudio(jurandir, from, audioSource, ptt = false, mimetype) {
+  let audio;
+  if (Buffer.isBuffer(audioSource)) {
+    audio = audioSource;
+  } else if (typeof audioSource === 'string' && (audioSource.startsWith('http://') || audioSource.startsWith('https://'))) {
+    audio = { url: audioSource };
+  } else {
+    audio = fs.readFileSync(audioSource);
+  }
   return await jurandir.sendMessage(from, {
-    audio: fs.readFileSync(audioPath),
+    audio,
     mimetype: mimetype || (ptt ? 'audio/ogg; codecs=opus' : 'audio/mp4'),
     ptt,
   });
@@ -234,11 +242,12 @@ export async function sendAudio(jurandir, from, audioPath, ptt = false, mimetype
 /**
  * @param {WASocket} jurandir
  * @param {string} from
- * @param {string} stickerPath
+ * @param {string | Buffer} stickerSource
  * @param {WAMessage} [quotedMessage]
  */
-export async function sendSticker(jurandir, from, stickerPath, quotedMessage) {
-  const options = { sticker: fs.readFileSync(stickerPath) };
+export async function sendSticker(jurandir, from, stickerSource, quotedMessage) {
+  const sticker = Buffer.isBuffer(stickerSource) ? stickerSource : fs.readFileSync(stickerSource);
+  const options = { sticker };
   if (quotedMessage) return await jurandir.sendMessage(from, options, { quoted: quotedMessage });
   return await jurandir.sendMessage(from, options);
 }
@@ -417,10 +426,11 @@ export async function sendVideo2(jurandir, from, videoSource, caption, gifPlayba
 /**
  * @param {WASocket} jurandir
  * @param {string} from
- * @param {string} stickerPath
+ * @param {string | Buffer} stickerSource
  */
-export async function sendSticker2(jurandir, from, stickerPath) {
-  return await jurandir.sendMessage(from, { sticker: fs.readFileSync(stickerPath) });
+export async function sendSticker2(jurandir, from, stickerSource) {
+  const sticker = Buffer.isBuffer(stickerSource) ? stickerSource : fs.readFileSync(stickerSource);
+  return await jurandir.sendMessage(from, { sticker });
 }
 
 /**

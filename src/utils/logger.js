@@ -12,6 +12,7 @@ import moment from 'moment-timezone';
 const chalk = new Chalk({ level: 3 });
 const TIMEZONE = 'America/Sao_Paulo';
 
+/** @type {Record<string, string>} */
 const numberMap = {
   0: '0',
   1: '1',

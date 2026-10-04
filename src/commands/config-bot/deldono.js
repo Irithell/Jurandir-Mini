@@ -33,7 +33,7 @@ export default async ({
   const phones = config.owner.phones;
   const searchId = input.split('@')[0];
 
-  const index = phones.findIndex((p) => p.split('@')[0] === searchId);
+  const index = phones.findIndex((/** @type {string} */ p) => p.split('@')[0] === searchId);
 
   if (index === -1) {
     await errorReply(jurandir, from, toUnicodeBoldUpper('Número não encontrado na lista de donos.'), info);

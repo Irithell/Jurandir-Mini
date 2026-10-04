@@ -214,10 +214,10 @@ export async function buildCommandContext(jurandir, extractedData, rawMessage) {
       formatUptime,
       formatBytes,
       getAllGroups: () => cacheUtils.getAllGroupsCache(),
-      getGroupMetadata: (groupId) => cacheUtils.getGroupMetadataCache(jurandir, groupId),
-      isOwner: (sender) => isOwner(sender, botConfig.owner.phones),
-      isAdmin: (sender, meta) => isAdmin(sender, meta || groupMetadata),
-      isBotAdmin: (meta) => isBotAdmin(jurandir, meta || groupMetadata),
+      getGroupMetadata: (/** @type {string} */ groupId) => cacheUtils.getGroupMetadataCache(jurandir, groupId),
+      isOwner: (/** @type {string} */ sender) => isOwner(sender, botConfig.owner.phones),
+      isAdmin: (/** @type {string} */ sender, /** @type {any} */ meta) => isAdmin(sender, meta || groupMetadata),
+      isBotAdmin: (/** @type {any} */ meta) => isBotAdmin(jurandir, meta || groupMetadata),
     },
 
     get uptime() {

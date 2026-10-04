@@ -22,12 +22,20 @@ function detectPlatform() {
   return 'default';
 }
 
+/**
+ * @param {string} url
+ * @returns {Promise<any>}
+ */
 async function fetchJson(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
   return res.json();
 }
 
+/**
+ * @param {string} url
+ * @returns {Promise<any>}
+ */
 async function fetchJsonOrNull(url) {
   const res = await fetch(url);
   if (res.status === 404) return null;
@@ -35,20 +43,37 @@ async function fetchJsonOrNull(url) {
   return res.json();
 }
 
+/**
+ * @param {string} url
+ * @returns {Promise<Buffer>}
+ */
 async function fetchBuffer(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
   return Buffer.from(await res.arrayBuffer());
 }
 
+/**
+ * @param {Buffer} buffer
+ * @returns {string}
+ */
 function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
 }
 
+/**
+ * @param {Buffer} buffer
+ * @param {string} expected
+ * @returns {boolean}
+ */
 function validateHash(buffer, expected) {
   return sha256(buffer) === expected.replace('sha256:', '');
 }
 
+/**
+ * @param {string} dest
+ * @returns {string}
+ */
 function safeDest(dest) {
   const cwd = process.cwd();
   const abs = resolve(cwd, dest);
@@ -56,6 +81,11 @@ function safeDest(dest) {
   return abs;
 }
 
+/**
+ * @param {string} name
+ * @param {string} status
+ * @param {string | null} [step=null]
+ */
 function setStatus(name, status, step = null) {
   addonDbRun(`UPDATE addons SET status = ?, current_step = ? WHERE name = ?`, [
     status,
@@ -64,6 +94,10 @@ function setStatus(name, status, step = null) {
   ]);
 }
 
+/**
+ * @param {string} name
+ * @param {string} errorStack
+ */
 function setFailed(name, errorStack) {
   addonDbRun(`UPDATE addons SET status = 'failed', error_log = ? WHERE name = ?`, [
     errorStack,
@@ -71,9 +105,13 @@ function setFailed(name, errorStack) {
   ]);
 }
 
+/**
+ * @param {string} message
+ * @param {import('@/types/logger.d.ts').LogLevel} [level='info']
+ */
 function log(message, level = 'info') {
   ConsoleLogger.dispatch({
-    level: level ?? 'info',
+    level,
     lines: [{ message, tags: [{ label: 'INSTALLER' }] }],
   });
 }
@@ -133,6 +171,9 @@ async function writeAtomic(buffer, fileEntry, addonName, { force = false } = {})
   }
 }
 
+/**
+ * @param {any} manifest
+ */
 function checkConflicts(manifest) {
   for (const conflict of manifest.conflicts ?? []) {
     const existing = addonDbGet(`SELECT name FROM addons WHERE name = ? AND status = 'done'`, [
@@ -162,6 +203,9 @@ async function resolveDeps(manifest, installing, onProgress) {
   }
 }
 
+/**
+ * @param {any} manifest
+ */
 async function runMigrations(manifest) {
   for (const migration of manifest.migrations ?? []) {
     const abs = safeDest(migration.file);
@@ -171,6 +215,10 @@ async function runMigrations(manifest) {
   }
 }
 
+/**
+ * @param {any} manifest
+ * @param {string} addonPath
+ */
 function registerInDB(manifest, addonPath) {
   addonDbRun(
     `UPDATE addons SET manifest = ?, version = ?, status = 'done', current_step = 'done', error_log = NULL WHERE name = ?`,
@@ -283,7 +331,7 @@ async function installAddon(
       await runInstall(addonPath, manifest, { force, onProgress });
       log(`${name} v${manifest.version} instalado (segunda tentativa).`);
     } catch (err) {
-      setFailed(name, err instanceof Error ? err.stack : String(err));
+      setFailed(name, (err instanceof Error ? err.stack : null) || String(err));
       throw err;
     }
   }

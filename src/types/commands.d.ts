@@ -29,6 +29,14 @@ export interface CommandUtils {
   wrapPatternDecoration: (text?: string | null, maxChars?: number) => string;
   wrapBracketText: (text?: string | null, maxChars?: number) => string;
   wrapBracketDecoration: (text?: string | null, maxChars?: number) => string;
+  removeAccents: (str: string) => string;
+  capitalize?: (str: string) => string;
+
+  getAllGroups: () => any;
+  getGroupMetadata: (groupId: string) => Promise<any>;
+  isOwner: (sender: string) => boolean;
+  isAdmin: (sender: string, meta?: any) => boolean;
+  isBotAdmin: (meta?: any) => boolean;
 
   logger: any;
   cache: any;
@@ -79,14 +87,14 @@ export interface CommandUtils {
   sendImage: (
     jurandir: WASocket,
     from: string,
-    imagePath: string,
+    imagePath: string | Buffer,
     caption?: string,
     quotedMessage?: WAMessage
   ) => Promise<any>;
   sendVideo: (
     jurandir: WASocket,
     from: string,
-    videoPath: string,
+    videoPath: string | Buffer,
     caption?: string,
     quotedMessage?: WAMessage,
     gifPlayback?: boolean
@@ -94,14 +102,14 @@ export interface CommandUtils {
   sendAudio: (
     jurandir: WASocket,
     from: string,
-    audioPath: string,
+    audioPath: string | Buffer,
     ptt?: boolean,
     mimetype?: string
   ) => Promise<any>;
   sendSticker: (
     jurandir: WASocket,
     from: string,
-    stickerPath: string,
+    stickerPath: string | Buffer,
     quotedMessage?: WAMessage
   ) => Promise<any>;
   sendStickerFromUrl: (
@@ -165,17 +173,17 @@ export interface CommandUtils {
   sendImage2: (
     jurandir: WASocket,
     from: string,
-    imagePath: string,
+    imagePath: string | Buffer,
     caption?: string
   ) => Promise<any>;
   sendVideo2: (
     jurandir: WASocket,
     from: string,
-    videoPath: string,
+    videoPath: string | Buffer,
     caption?: string,
     gifPlayback?: boolean
   ) => Promise<any>;
-  sendSticker2: (jurandir: WASocket, from: string, stickerPath: string) => Promise<any>;
+  sendSticker2: (jurandir: WASocket, from: string, stickerPath: string | Buffer) => Promise<any>;
   sendStickerFromUrl2: (jurandir: WASocket, from: string, url: string) => Promise<any>;
 
   sendButton: (jurandir: WASocket, from: string, payload: InteractivePayload) => Promise<any>;

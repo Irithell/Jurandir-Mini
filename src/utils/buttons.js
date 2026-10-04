@@ -4,6 +4,7 @@ import { botConfig } from '../configs/bot.config.js';
 
 /**
  * @typedef {import('@whiskeysockets/baileys').WASocket} WASocket
+ * @typedef {import('@whiskeysockets/baileys').AnyMessageContent} AnyMessageContent
  * @typedef {import('@/types/buttons.d.ts').CleanButton} CleanButton
  * @typedef {import('@/types/buttons.d.ts').NativeButton} NativeButton
  * @typedef {import('@/types/buttons.d.ts').InteractiveCard} InteractiveCard
@@ -428,7 +429,7 @@ export async function sendButton(sock, from, payload) {
 
     const caption = card.body || payload.bodyText || '';
 
-    /** @type {Record<string, any>} */
+    /** @type {AnyMessageContent} */
     let messageContent;
     if (mediaSource) {
       if (isDocument) {
@@ -456,7 +457,7 @@ export async function sendButton(sock, from, payload) {
 
     const contextInfo = buildContextInfo(payload.quotedMessage, payload.mentions);
     if (contextInfo) {
-      messageContent.contextInfo = contextInfo;
+      /** @type {any} */ (messageContent).contextInfo = contextInfo;
     }
 
     const options = payload.quotedMessage ? { quoted: payload.quotedMessage } : undefined;
